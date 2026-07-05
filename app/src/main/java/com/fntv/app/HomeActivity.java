@@ -60,6 +60,7 @@ public class HomeActivity extends AppCompatActivity {
     private PlayListItem savedDetailItem;
     private PlayInfoResponse savedDetailInfo;
     private boolean browseFromLibrary;
+    private String savedLiveChannelTitle;
 
     @Override
 
@@ -77,6 +78,7 @@ public class HomeActivity extends AppCompatActivity {
             overviewBuilt = false;
             showOverview();
             loadAllPreviews();
+            loadLiveChannels();
         }
     }
 
@@ -165,6 +167,7 @@ public class HomeActivity extends AppCompatActivity {
             showOverview();
             loadAllPreviews();
             loadContinueWatching();
+            loadLiveChannels();
         } else if (currentTab == 0 && !overviewBuilt && showingOverview) {
             loadOverview();
         }
@@ -224,11 +227,14 @@ public class HomeActivity extends AppCompatActivity {
                 if (response.isSuccessful() && response.body() != null && response.body().code == 0
                         && response.body().data != null && !response.body().data.isEmpty()) {
                     mediaLibraries.clear();
-                    mediaLibraries.addAll(response.body().data);
+                    for (MediaDbItem lib : response.body().data) {
+                        if (!lib.refreshDisabled) mediaLibraries.add(lib);
+                    }
                     Log.d("Overview", "loaded " + mediaLibraries.size() + " libraries");
                     showOverview();
                     loadAllPreviews();
                     loadContinueWatching();
+                    loadLiveChannels();
                 } else {
                     tvMoviesLoading.setVisibility(View.GONE);
                 }
@@ -246,6 +252,7 @@ public class HomeActivity extends AppCompatActivity {
     private void showOverview() {
         tvMoviesLoading.setVisibility(View.GONE);
         savedDetailItem = null; savedDetailInfo = null; savedBrowseList = null; savedBrowseGuid = null;
+        savedLiveChannelTitle = null;
         showingEpisodes = false;
         moviesContainer.removeAllViews();
         showingOverview = true;
@@ -1476,8 +1483,12 @@ public class HomeActivity extends AppCompatActivity {
                 if (response.isSuccessful() && response.body() != null && response.body().code == 0
                         && response.body().data != null && !response.body().data.isEmpty()) {
                     mediaLibraries.clear();
-                    mediaLibraries.addAll(response.body().data);
-                    populateLibGrid(libraryContainer, response.body().data);
+                    List<MediaDbItem> filteredLibs = new ArrayList<>();
+                    for (MediaDbItem lib : response.body().data) {
+                        if (!lib.refreshDisabled) filteredLibs.add(lib);
+                    }
+                    mediaLibraries.addAll(filteredLibs);
+                    populateLibGrid(libraryContainer, filteredLibs);
                     return;
                 }
                 tvLibraryEmpty.setVisibility(View.VISIBLE);
@@ -1742,6 +1753,291 @@ public class HomeActivity extends AppCompatActivity {
             } else if (child instanceof ViewGroup) {
                 collectImageViews((ViewGroup) child, out);
             }
+        }
+    }
+
+
+    // ==================== 直播频道 ====================
+
+
+    /** 加载直播频道（total>0 则显示预览区） */
+    private void loadLiveChannels() {
+        try {
+            ItemListRequest liveReq = ItemListRequest.browseLiveChannels();
+            Log.d("LiveChannel", "请求体: " + new com.google.gson.Gson().toJson(liveReq));
+            Log.d("LiveChannel", "loadLiveChannels 开始请求...");
+            apiManager.getApi().getItemList(liveReq).enqueue(new Callback<ApiResponse<ItemListResponse>>() {
+                @Override
+                public void onResponse(Call<ApiResponse<ItemListResponse>> call,
+                                       Response<ApiResponse<ItemListResponse>> response) {
+                    try {
+                        Log.d("LiveChannel", "响应 code=" + response.code()
+                                + " isSuccessful=" + response.isSuccessful());
+                        // 打印请求信息
+                        okhttp3.Request req = call.request();
+                        Log.d("LiveChannel", "请求URL: " + req.url());
+                        Log.d("LiveChannel", "请求Method: " + req.method());
+                        Log.d("LiveChannel", "请求Headers:");
+                        for (int i = 0; i < req.headers().size(); i++) {
+                            Log.d("LiveChannel", "  " + req.headers().name(i) + ": " + req.headers().value(i));
+                        }
+                        if (response.body() != null) {
+                            Log.d("LiveChannel", "body code=" + response.body().code
+                                    + " msg=" + response.body().msg
+                                    + " data=" + new com.google.gson.Gson().toJson(response.body()));
+                        } else {
+                            Log.w("LiveChannel", "body=null");
+                        }
+                        if (!response.isSuccessful() || response.body() == null || response.body().code != 0
+                                || response.body().data == null || response.body().data.list == null
+                                || response.body().data.list.isEmpty()) return;
+                        List<PlayListItem> items = response.body().data.list;
+                        int total = response.body().data.total;
+                        Log.d("LiveChannel", "直播频道: total=" + total + " items=" + items.size());
+                        if (total > 0) {
+                            List<PlayListItem> preview = items.size() > 20 ? items.subList(0, 20) : items;
+                            fillLiveChannelPreview(preview, total);
+                        }
+                    } catch (Exception e) {
+                        Log.e("LiveChannel", "onResponse 异常", e);
+                    }
+                }
+                @Override
+                public void onFailure(Call<ApiResponse<ItemListResponse>> call, Throwable t) {
+                    Log.e("LiveChannel", "请求失败: " + t.getMessage(), t);
+                }
+            });
+        } catch (Exception e) {
+            Log.e("LiveChannel", "loadLiveChannels 异常", e);
+        }
+    }
+
+    /** 填充直播频道预览区（先移除旧的再添加） */
+    private void fillLiveChannelPreview(List<PlayListItem> items, int total) {
+        // 移除已有的直播频道区域
+        for (int i = moviesContainer.getChildCount() - 1; i >= 0; i--) {
+            View v = moviesContainer.getChildAt(i);
+            if (v instanceof LinearLayout && "live_channel".equals(v.getTag())) {
+                moviesContainer.removeView(v);
+            }
+        }
+
+        LinearLayout section = new LinearLayout(this);
+        section.setOrientation(LinearLayout.VERTICAL);
+        section.setTag("live_channel");
+        section.setLayoutParams(new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+
+        // ── 标题行 ──
+        LinearLayout headerRow = new LinearLayout(this);
+        headerRow.setLayoutParams(new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        headerRow.setOrientation(LinearLayout.HORIZONTAL);
+        headerRow.setPadding(6, 24, 6, 18);
+        headerRow.setGravity(Gravity.CENTER_VERTICAL);
+        headerRow.setMinimumHeight(68);
+        headerRow.setId(View.generateViewId());
+
+        TextView header = new TextView(this);
+        header.setLayoutParams(new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+        header.setText("直播频道");
+        header.setTextColor(0xFFEEEEEE);
+        header.setTextSize(18);
+        header.setTypeface(Typeface.DEFAULT_BOLD);
+        headerRow.addView(header);
+
+        Button viewAll = new Button(this);
+        viewAll.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, 68));
+        viewAll.setBackgroundResource(R.drawable.bg_input);
+        viewAll.setText("查看全部 ›");
+        viewAll.setTextColor(0xFFB0B0B0);
+        viewAll.setTextSize(14);
+        viewAll.setFocusable(true);
+        viewAll.setId(View.generateViewId());
+        viewAll.setPadding(24, 0, 24, 0);
+        viewAll.setOnClickListener(v -> browseLiveChannels());
+        viewAll.setOnFocusChangeListener((v, hasFocus) -> {
+            viewAll.setTextColor(hasFocus ? 0xFF81C784 : 0xFFB0B0B0);
+            viewAll.setBackgroundColor(hasFocus ? 0x44FFFFFF : 0x00000000);
+        });
+        headerRow.addView(viewAll);
+        section.addView(headerRow);
+
+        // ── 横向滚动卡片预览（和其他媒体库预览一致的高度）──
+        HorizontalScrollView hsv = new HorizontalScrollView(this);
+        hsv.setLayoutParams(new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, 410));
+        hsv.setScrollBarStyle(View.SCROLLBARS_INSIDE_OVERLAY);
+
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setPadding(12, 8, 12, 8);
+
+        // 焦点链：卡片 ↑ 到查看全部按钮，↓ 到查看全部按钮
+        for (int i = 0; i < items.size(); i++) {
+            View card = makeLiveChannelCard(items.get(i));
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(220, 380);
+            lp.setMargins(10, 0, 10, 0);
+            card.setLayoutParams(lp);
+            card.setNextFocusUpId(viewAll.getId());
+            card.setNextFocusDownId(viewAll.getId());
+            row.addView(card);
+        }
+
+        hsv.addView(row);
+        section.addView(hsv);
+        section.addView(makeSpacer(16));
+
+        // 插入到 moviesContainer
+        moviesContainer.addView(section);
+    }
+
+    /** 直播频道卡片（和其他卡片样式一致，图片区域空白） */
+    private View makeLiveChannelCard(PlayListItem item) {
+        LinearLayout card = new LinearLayout(this);
+        card.setOrientation(LinearLayout.VERTICAL);
+        card.setBackgroundResource(R.drawable.bg_media_card);
+        card.setPadding(6, 6, 6, 6);
+        card.setFocusable(true);
+
+        // 空图片区域（和其他卡片尺寸一致，灰色背景）
+        View imagePlaceholder = new View(this);
+        imagePlaceholder.setLayoutParams(new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, 280));
+        imagePlaceholder.setBackgroundColor(0xFF333333);
+        card.addView(imagePlaceholder);
+
+        // 底部文字条：类型 + 标题
+        LinearLayout textBar = new LinearLayout(this);
+        textBar.setLayoutParams(new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, 88));
+        textBar.setOrientation(LinearLayout.VERTICAL);
+        textBar.setGravity(Gravity.CENTER_VERTICAL);
+        textBar.setPadding(0, 4, 0, 4);
+
+        TextView tag = new TextView(this);
+        tag.setTextSize(9);
+        tag.setTextColor(0xFF78909C);
+        tag.setText("直播");
+        textBar.addView(tag);
+
+        final TextView title = new TextView(this);
+        title.setSingleLine(true);
+        title.setEllipsize(TextUtils.TruncateAt.MARQUEE);
+        title.setMarqueeRepeatLimit(-1);
+        title.setTextSize(11);
+        title.setTextColor(0xFFEEEEEE);
+        title.setText(item.title != null ? item.title : "未知");
+        textBar.addView(title);
+
+        card.addView(textBar);
+
+        card.setOnFocusChangeListener(new View.OnFocusChangeListener() {
+            @Override
+            public void onFocusChange(View v, boolean hasFocus) {
+                title.setSelected(hasFocus);
+            }
+        });
+
+        card.setTag(item);
+        card.setOnClickListener(v -> {
+            PlayListItem it = (PlayListItem) card.getTag();
+            launchPlayer(it.guid, it.title, "", 0, null, "LiveChannel", 0, 0, it.parentGuid);
+        });
+        return card;
+    }
+
+    /** 直播频道查看全部 */
+    private void browseLiveChannels() {
+        savedDetailItem = null;
+        savedDetailInfo = null;
+        showingEpisodes = false;
+        showingOverview = false;
+        savedLiveChannelTitle = "直播频道";
+        moviesContainer.removeAllViews();
+        tvMoviesLoading.setVisibility(View.VISIBLE);
+        tvMoviesLoading.setText("加载直播频道...");
+
+        apiManager.getApi().getItemList(ItemListRequest.browseLiveChannels()).enqueue(new Callback<ApiResponse<ItemListResponse>>() {
+            @Override
+            public void onResponse(Call<ApiResponse<ItemListResponse>> call,
+                                   Response<ApiResponse<ItemListResponse>> response) {
+                tvMoviesLoading.setVisibility(View.GONE);
+                if (!response.isSuccessful() || response.body() == null || response.body().code != 0
+                        || response.body().data == null || response.body().data.list == null
+                        || response.body().data.list.isEmpty()) {
+                    TextView e = new TextView(HomeActivity.this);
+                    e.setLayoutParams(new LinearLayout.LayoutParams(
+                            ViewGroup.LayoutParams.MATCH_PARENT, 120));
+                    e.setGravity(Gravity.CENTER);
+                    e.setText("暂无直播频道");
+                    e.setTextColor(0xFF808080);
+                    e.setTextSize(14);
+                    moviesContainer.addView(e);
+                    return;
+                }
+                List<PlayListItem> list = response.body().data.list;
+                int total = response.body().data.total;
+                Log.d("LiveChannel", "直播频道查看全部: total=" + total + " items=" + list.size()
+                        + " resp=" + new com.google.gson.Gson().toJson(response.body()));
+                renderLiveChannelGrid(list, total);
+            }
+            @Override
+            public void onFailure(Call<ApiResponse<ItemListResponse>> call, Throwable t) {
+                tvMoviesLoading.setVisibility(View.GONE);
+                Toast.makeText(HomeActivity.this, "加载直播频道失败", Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    /** 渲染直播频道网格（自适应列数） */
+    private void renderLiveChannelGrid(List<PlayListItem> list, int total) {
+        // 标题
+        TextView h = new TextView(this);
+        h.setLayoutParams(new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        h.setPadding(6, 8, 6, 4);
+        h.setText("直播频道  (" + total + "项)");
+        h.setTextColor(0xFFEEEEEE);
+        h.setTextSize(14);
+        moviesContainer.addView(h);
+
+        // 自适应列数
+        float density = getResources().getDisplayMetrics().density;
+        int cols = Math.max(3, (int) (getResources().getDisplayMetrics().widthPixels / (130 * density)));
+
+        for (int idx = 0; idx < list.size(); idx += cols) {
+            LinearLayout row = new LinearLayout(this);
+            row.setLayoutParams(new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+            row.setOrientation(LinearLayout.HORIZONTAL);
+            int inRow = Math.min(cols, list.size() - idx);
+            for (int c = 0; c < cols && idx + c < list.size(); c++) {
+                PlayListItem pli = list.get(idx + c);
+                View card = makeLiveChannelCard(pli);
+                // 图片占位区域高度与其他卡片一致：基于列数自适应
+                if (card instanceof ViewGroup) {
+                    View ch = ((ViewGroup) card).getChildAt(0);
+                    int posterH = Math.min(550, (getResources().getDisplayMetrics().widthPixels / cols) * 3 / 2);
+                    ch.setLayoutParams(new LinearLayout.LayoutParams(
+                            ViewGroup.LayoutParams.MATCH_PARENT, posterH));
+                }
+                LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                        0, ViewGroup.LayoutParams.WRAP_CONTENT, 1);
+                lp.rightMargin = 6;
+                lp.leftMargin = 6;
+                card.setLayoutParams(lp);
+                row.addView(card);
+            }
+            // 补齐空位
+            for (int e = inRow; e < cols; e++) {
+                View spacer = new View(this);
+                spacer.setLayoutParams(new LinearLayout.LayoutParams(
+                        0, ViewGroup.LayoutParams.MATCH_PARENT, 1));
+                row.addView(spacer);
+            }
+            moviesContainer.addView(row);
+            moviesContainer.addView(makeSpacer(8));
         }
     }
 

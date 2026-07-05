@@ -24,7 +24,7 @@ public class ItemListRequest {
     public Tags tags;
 
     @SerializedName("exclude_grouped_video")
-    public int excludeGroupedVideo;
+    public Integer excludeGroupedVideo;
 
     @SerializedName("sort_type")
     public String sortType;
@@ -34,6 +34,9 @@ public class ItemListRequest {
 
     @SerializedName("page_size")
     public int pageSize;
+
+    @SerializedName("page")
+    public Integer page;
 
     /** 类型标签 */
     public static class Tags {
@@ -50,7 +53,7 @@ public class ItemListRequest {
                            String sortType, int pageSize) {
         this.ancestorGuid = ancestorGuid;
         this.tags = new Tags(typeTags);
-        this.excludeGroupedVideo = excludeGrouped ? 1 : 0;
+        this.excludeGroupedVideo = excludeGrouped ? Integer.valueOf(1) : Integer.valueOf(0);
         this.sortColumn = sortColumn;
         this.sortType = sortType;
         this.pageSize = pageSize;
@@ -75,5 +78,15 @@ public class ItemListRequest {
         return new ItemListRequest(ancestorGuid,
                 Arrays.asList("Movie", "TV", "Directory", "Video", "Episode"),
                 false, "sort_title", "ASC", 100);
+    }
+
+    /** 直播频道列表（不设 ancestor_guid / exclude_grouped_video） */
+    public static ItemListRequest browseLiveChannels() {
+        ItemListRequest req = new ItemListRequest(null,
+                Arrays.asList("LiveChannel"),
+                false, "sort_title", "DESC", 10000);
+        req.excludeGroupedVideo = null; // 不序列化此字段
+        req.page = 1;
+        return req;
     }
 }

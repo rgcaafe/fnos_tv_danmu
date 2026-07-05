@@ -18,6 +18,8 @@ public class MediaDbItem {
     public int viewType;
     @SerializedName("poster_type")
     public int posterType;
+    @SerializedName("refresh_disabled")
+    public boolean refreshDisabled;
 
     /** 获取第一张海报路径，拼成完整URL用 */
     public String getFirstPoster() {

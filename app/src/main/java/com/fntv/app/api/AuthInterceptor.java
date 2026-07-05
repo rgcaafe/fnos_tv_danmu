@@ -43,7 +43,9 @@ public class AuthInterceptor implements Interceptor {
         Request.Builder requestBuilder = original.newBuilder()
                 .header("Content-Type", "application/json")
                 .header("Authx", authx)
-                .header("Cookie", "mode=relay");
+                .header("Cookie", "mode=relay")
+                .header("x-trim-client", "web")
+                .header("x-trim-client-version", "608");
 
         if (token != null) {
             requestBuilder.header("Authorization", token);
