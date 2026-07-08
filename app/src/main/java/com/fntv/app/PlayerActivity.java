@@ -995,7 +995,7 @@ public class PlayerActivity extends AppCompatActivity {
         boolean videoHdr = isHdrVideo();
         Log.d(TAG, "applyHdrMode: enabled=" + enabled + " videoHdr=" + videoHdr);
         if (enabled && videoHdr) {
-            getWindow().setColorMode(1);
+            getWindow().setColorMode(ActivityInfo.COLOR_MODE_HDR);
             danmuManager.showDanmuStatus("HDR 已开启");
         } else {
             getWindow().setColorMode(0);
