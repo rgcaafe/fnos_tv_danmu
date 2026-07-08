@@ -1259,10 +1259,10 @@ public class HomeActivity extends AppCompatActivity {
         playFrame.addView(playBtn);
         content.addView(playFrame);
 
-        // Episode 类型 → 加载剧集列表，加载后用剧集列表里的精确时长更新播放按钮
-        if ("Episode".equals(info.type) && info.parentGuid != null && !info.parentGuid.isEmpty()) {
+        // Episode 类型 → 先加载季列表，点击某季后加载该季剧集
+        if (item.guid != null && !item.guid.isEmpty()) {
             content.addView(makeSpacer(16));
-            loadEpisodes(content, info.parentGuid, item, playBtn, pTs, null);
+            loadSeasons(content, item.guid, item, playBtn, pTs);
         }
 
     }
@@ -1290,6 +1290,101 @@ public class HomeActivity extends AppCompatActivity {
                             break;
                         }
                     }
+                }
+            }
+            @Override public void onFailure(Call<ApiResponse<List<PlayListItem>>> call, Throwable t) {}
+        });
+    }
+
+    /** 加载季列表（从 season/list 接口获取） */
+    private void loadSeasons(final LinearLayout content, final String itemGuid, final PlayListItem item,
+                              final Button playBtn, final long pTs) {
+        TextView h = new TextView(this);
+        h.setLayoutParams(new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        h.setPadding(0, 14, 0, 14);
+        h.setText("选择剧集");
+        h.setTextColor(0xFFEEEEEE);
+        h.setTextSize(22);
+        h.setTypeface(Typeface.DEFAULT_BOLD);
+        content.addView(h);
+
+        apiManager.getApi().getSeasonList(itemGuid).enqueue(new Callback<ApiResponse<List<PlayListItem>>>() {
+            @Override
+            public void onResponse(Call<ApiResponse<List<PlayListItem>>> call,
+                                   Response<ApiResponse<List<PlayListItem>>> response) {
+                if (!response.isSuccessful() || response.body() == null || response.body().code != 0
+                        || response.body().data == null || response.body().data.isEmpty()) return;
+                List<PlayListItem> seasons = response.body().data;
+                for (final PlayListItem season : seasons) {
+                    LinearLayout card = new LinearLayout(HomeActivity.this);
+                    card.setOrientation(LinearLayout.HORIZONTAL);
+                    card.setBackgroundResource(R.drawable.bg_media_card);
+                    card.setPadding(16, 18, 16, 18);
+                    card.setFocusable(true);
+                    card.setMinimumHeight(56);
+
+                    LinearLayout tc = new LinearLayout(HomeActivity.this);
+                    tc.setLayoutParams(new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+                    tc.setOrientation(LinearLayout.VERTICAL);
+                    tc.setGravity(Gravity.CENTER_VERTICAL);
+                    TextView st = new TextView(HomeActivity.this);
+                    st.setTextSize(16);
+                    st.setTextColor(0xFFEEEEEE);
+                    st.setText("第 " + season.seasonNumber + " 季");
+                    tc.addView(st);
+                    TextView ss = new TextView(HomeActivity.this);
+                    ss.setTextSize(12);
+                    ss.setTextColor(0xFF808080);
+                    ss.setText(season.localNumberOfEpisodes > 0 ? season.localNumberOfEpisodes + " 集" : "");
+                    tc.addView(ss);
+                    card.addView(tc);
+
+                    TextView ar = new TextView(HomeActivity.this);
+                    ar.setLayoutParams(new LinearLayout.LayoutParams(
+                            ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+                    ar.setText(">");
+                    ar.setTextColor(0xFF808080);
+                    ar.setTextSize(20);
+                    ar.setGravity(Gravity.CENTER);
+                    ar.setPadding(8, 0, 0, 0);
+                    card.addView(ar);
+
+                    final int sn = season.seasonNumber > 0 ? season.seasonNumber : 1;
+                    card.setOnClickListener(v -> loadEpisodesForSeason(season.guid, sn, item));
+                    content.addView(card);
+                    content.addView(makeSpacer(12));
+                }
+            }
+            @Override public void onFailure(Call<ApiResponse<List<PlayListItem>>> call, Throwable t) {}
+        });
+    }
+
+    /** 加载某季的剧集列表（点击季后调用，直接显示剧集） */
+    private void loadEpisodesForSeason(String seasonGuid, int seasonNumber, PlayListItem original) {
+        showingEpisodes = true;
+        moviesContainer.removeAllViews();
+        // 标题
+        TextView h = new TextView(this);
+        h.setLayoutParams(new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, 78));
+        h.setGravity(Gravity.CENTER);
+        h.setText("第 " + seasonNumber + " 季");
+        h.setTextColor(0xFFEEEEEE);
+        h.setTextSize(21);
+        h.setTypeface(Typeface.DEFAULT_BOLD);
+        moviesContainer.addView(h);
+        moviesContainer.addView(makeSpacer(8));
+
+        apiManager.getApi().getEpisodeList(seasonGuid).enqueue(new Callback<ApiResponse<List<PlayListItem>>>() {
+            @Override
+            public void onResponse(Call<ApiResponse<List<PlayListItem>>> call,
+                                   Response<ApiResponse<List<PlayListItem>>> response) {
+                if (!response.isSuccessful() || response.body() == null || response.body().code != 0
+                        || response.body().data == null || response.body().data.isEmpty()) return;
+                for (PlayListItem ep : response.body().data) {
+                    moviesContainer.addView(makeEpisodeItem(ep, ep.guid.equals(original.guid)));
+                    moviesContainer.addView(makeSpacer(8));
                 }
             }
             @Override public void onFailure(Call<ApiResponse<List<PlayListItem>>> call, Throwable t) {}
@@ -1900,12 +1995,22 @@ public class HomeActivity extends AppCompatActivity {
         card.setPadding(6, 6, 6, 6);
         card.setFocusable(true);
 
-        // 空图片区域（和其他卡片尺寸一致，灰色背景）
-        View imagePlaceholder = new View(this);
-        imagePlaceholder.setLayoutParams(new LinearLayout.LayoutParams(
+        // 频道全名 + 彩色背景
+        String shortName = item.title != null && !item.title.isEmpty() ? item.title : "?";
+        int[] colors = {0xFFE53935, 0xFF1E88E5, 0xFF43A047, 0xFFFB8C00,
+                        0xFF8E24AA, 0xFF00ACC1, 0xFF6D4C41, 0xFF546E7A};
+        int colorIdx = item.guid != null ? Math.abs(item.guid.hashCode() % colors.length) : 0;
+        TextView channelBadge = new TextView(this);
+        channelBadge.setLayoutParams(new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, 280));
-        imagePlaceholder.setBackgroundColor(0xFF333333);
-        card.addView(imagePlaceholder);
+        channelBadge.setGravity(Gravity.CENTER);
+        channelBadge.setText(shortName);
+        channelBadge.setTextColor(0xFFFFFFFF);
+        int len = shortName.length();
+        channelBadge.setTextSize(len <= 2 ? 56 : len <= 4 ? 40 : len <= 6 ? 30 : 22);
+        channelBadge.setTypeface(Typeface.DEFAULT_BOLD);
+        channelBadge.setBackgroundColor(colors[colorIdx]);
+        card.addView(channelBadge);
 
         // 底部文字条：类型 + 标题
         LinearLayout textBar = new LinearLayout(this);

@@ -82,6 +82,19 @@ public class PlayInfoResponse {
         public List<String> colorRangeType;
     }
 
+    @SerializedName("live_channels")
+    public List<LiveChannelStream> liveChannels;
+
+    /** 直播频道流信息 */
+    public static class LiveChannelStream {
+        public String guid;
+        public String path;
+        @SerializedName("file_name")
+        public String fileName;
+        @SerializedName("can_play")
+        public int canPlay;
+    }
+
     /** 获取显示用的海报路径 */
     public String getPosterPath() {
         if (item != null && item.posters != null && !item.posters.isEmpty()) return item.posters;

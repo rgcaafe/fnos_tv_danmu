@@ -84,7 +84,7 @@ public class ItemListRequest {
     public static ItemListRequest browseLiveChannels() {
         ItemListRequest req = new ItemListRequest(null,
                 Arrays.asList("LiveChannel"),
-                false, "sort_title", "DESC", 10000);
+                false, "sort_title", "ASC", 10000);
         req.excludeGroupedVideo = null; // 不序列化此字段
         req.page = 1;
         return req;

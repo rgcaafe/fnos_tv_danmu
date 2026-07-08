@@ -171,6 +171,8 @@
         android:layout_gravity="bottom"
         android:orientation="vertical"
         android:paddingTop="28dp"
+        android:paddingBottom="8dp"
+        android:background="#AA000000"
         android:visibility="invisible">
 
         <!-- 进度条 (细条) -->
@@ -428,6 +430,18 @@
                 android:gravity="center"
                 android:paddingLeft="10dp" android:paddingRight="10dp"
                 android:minWidth="0dp" android:minHeight="0dp"
+                android:nextFocusDown="@+id/btnHdrToggle" />
+
+            <Button android:id="@+id/btnHdrToggle"
+                android:layout_width="wrap_content" android:layout_height="34dp"
+                android:background="@drawable/bg_chip"
+                android:text="HDR"
+                android:textColor="#EEE" android:textSize="12sp"
+                android:focusable="true"
+                android:gravity="center"
+                android:paddingLeft="10dp" android:paddingRight="10dp"
+                android:minWidth="0dp" android:minHeight="0dp"
+                android:layout_marginRight="6dp"
                 android:nextFocusDown="@+id/btnCloseInfo" />
 
         </LinearLayout>

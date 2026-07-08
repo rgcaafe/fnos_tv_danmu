@@ -38,7 +38,7 @@ public class PlayerActivity extends AppCompatActivity {
     private SimpleExoPlayer player;
     private TextView tvBuffering, tvTime, infoText;
     private SeekBar seekBar;
-    private Button btnPlayPause, btnRewind, btnForward, btnSpeed, btnRatio, btnInfo, btnCloseInfo, btnEpisodeList, btnNextEp, btnBack, btnDanmu;
+    private Button btnPlayPause, btnRewind, btnForward, btnSpeed, btnRatio, btnInfo, btnCloseInfo, btnEpisodeList, btnNextEp, btnBack, btnDanmu, btnHdrToggle;
     private ImageView btnLock;
     private TextView tvTitle, tvDanmuStatus, tvDanmuMatch, tvSpeedHint, infoTextAudio, infoTextExtra;
     private Button btnCloudMode, btnBrightness, btnSkip;
@@ -68,6 +68,7 @@ public class PlayerActivity extends AppCompatActivity {
     private int streamBitrate = 0; // bps 来自 stream API
     private Runnable seekCommitR;
     private long pendingSeekMs = -1;
+    private String savedPlaybackUrl = null; // 当前播放地址（用于硬解失败后切软解重试）
     private static final String TAG = "Player";
 
     private static final int[] RATIO_MODES = {0, 1, 2};
@@ -338,11 +339,16 @@ public class PlayerActivity extends AppCompatActivity {
         // 音轨/字幕选择按钮
         Button btnAudioTrack = findViewById(R.id.btnAudioTrack);
         Button btnSubtitleTrack = findViewById(R.id.btnSubtitleTrack);
+        btnHdrToggle = findViewById(R.id.btnHdrToggle);
         if (btnAudioTrack != null) {
             btnAudioTrack.setOnClickListener(v -> cloudStreamManager.showAudioTrackDialog(PlayerActivity.this));
         }
         if (btnSubtitleTrack != null) {
             btnSubtitleTrack.setOnClickListener(v -> cloudStreamManager.showSubtitleTrackDialog(PlayerActivity.this));
+        }
+        if (btnHdrToggle != null) {
+            btnHdrToggle.setOnClickListener(v -> toggleHdr());
+            updateHdrButtonText();
         }
 
         setupFocusAutoHide();
@@ -508,6 +514,7 @@ public class PlayerActivity extends AppCompatActivity {
                 }
             }
             int retryCount = 0;
+            private boolean swDecoderTried = false;
             @Override public void onPlayerError(PlaybackException e) {
                 // 打印完整错误链
                 StringBuilder sb2 = new StringBuilder("播放错误: " + e.getMessage());
@@ -517,6 +524,17 @@ public class PlayerActivity extends AppCompatActivity {
                     tc = tc.getCause();
                 }
                 Log.e(TAG, sb2.toString());
+                // 视频解码器崩溃 → 自动切软解重试
+                if (!swDecoderTried && e instanceof ExoPlaybackException
+                        && e.getCause() instanceof com.google.android.exoplayer2.video.MediaCodecVideoDecoderException) {
+                    swDecoderTried = true;
+                    Log.d(TAG, "硬解失败，切换到软解重试");
+                    getSharedPreferences("fntv_prefs", MODE_PRIVATE)
+                            .edit().putString("decoder_mode", "software").apply();
+                    isHwDecode = false;
+                    handler.post(() -> recreatePlayerWithSwDecoder());
+                    return;
+                }
                 // 按响应码切换
                 int code = OkHttpExoDataSource.lastResponseCode;
                 if (code == 200 && !useHls && cloudStreamManager.hasDirectUrl()) {
@@ -590,6 +608,15 @@ public class PlayerActivity extends AppCompatActivity {
                             && !info.item.mediaStream.resolutions.isEmpty())
                         resolution = info.item.mediaStream.resolutions.get(0);
 
+                    // 直播频道：直接从 live_channels 取第一个流地址播放
+                    if (info.liveChannels != null && !info.liveChannels.isEmpty()) {
+                        String liveUrl = info.liveChannels.get(0).path;
+                        Log.d(TAG, "直播频道播放地址: " + liveUrl);
+                        playLiveStream(liveUrl);
+                        tvTitle.setText(itemTitle != null ? itemTitle : "直播");
+                        return;
+                    }
+
                     // 获取直链信息，获取完后开始播放
                     cloudStreamManager.fetchDirectLink(itemGuid, mediaGuid);
                 }
@@ -604,6 +631,7 @@ public class PlayerActivity extends AppCompatActivity {
         CloudStreamManager.PlaybackConfig cfg = cloudStreamManager.getPlaybackConfig(baseUrl, mediaGuid);
         OkHttpExoDataSource.setChunkedMode(cfg.chunkedModeSize);
         useHls = cfg.hls;
+        savedPlaybackUrl = cfg.url;
         com.google.android.exoplayer2.upstream.DataSource.Factory f = () -> new OkHttpExoDataSource(apiManager.getStreamClient());
         if (useHls) {
             player.setMediaSource(new com.google.android.exoplayer2.source.hls.HlsMediaSource.Factory(f).createMediaSource(MediaItem.fromUri(cfg.url)));
@@ -616,6 +644,105 @@ public class PlayerActivity extends AppCompatActivity {
         Log.d(TAG, "startPlayback: parentGuid=" + parentGuid + " episodeLoaded=" + (episodeManager != null && episodeManager.isLoaded()) + " loadingEp=" + (episodeManager != null && episodeManager.isLoading()));
         if (parentGuid != null && !parentGuid.isEmpty() && episodeManager != null && !episodeManager.isLoaded() && !episodeManager.isLoading())
             episodeManager.loadList(parentGuid);
+    }
+
+    /** 直播频道播放（直接用 live_channels 返回的地址） */
+    private void playLiveStream(String url) {
+        if (player == null) return;
+        savedPlaybackUrl = url;
+        useHls = url.contains(".m3u8");
+        com.google.android.exoplayer2.upstream.DataSource.Factory f = () -> new OkHttpExoDataSource(apiManager.getStreamClient());
+        if (useHls) {
+            player.setMediaSource(new com.google.android.exoplayer2.source.hls.HlsMediaSource.Factory(f).createMediaSource(MediaItem.fromUri(url)));
+            Log.d(TAG, "直播: HLS");
+        } else {
+            player.setMediaSource(new com.google.android.exoplayer2.source.ProgressiveMediaSource.Factory(f, new DefaultExtractorsFactory()).createMediaSource(MediaItem.fromUri(url)));
+            Log.d(TAG, "直播: 渐进式");
+        }
+        player.prepare();
+        player.setPlayWhenReady(true);
+    }
+
+    /** 硬解失败后切到软解，重新创建播放器 */
+    private void recreatePlayerWithSwDecoder() {
+        if (player != null) {
+            player.stop();
+            player.release();
+            player = null;
+        }
+        // 重新创建播放器（只允许 Google 软件解码器）
+        DefaultRenderersFactory rf2 = new DefaultRenderersFactory(this) {
+            @Override
+            protected void buildVideoRenderers(Context context, int extensionRendererMode,
+                                                com.google.android.exoplayer2.mediacodec.MediaCodecSelector mediaCodecSelector,
+                                                boolean enableDecoderFallback, android.os.Handler eventHandler,
+                                                com.google.android.exoplayer2.video.VideoRendererEventListener eventListener,
+                                                long allowedVideoJoiningTimeMs, java.util.ArrayList<Renderer> out) {
+                // 只保留 omx.google. 开头的软件解码器
+                com.google.android.exoplayer2.mediacodec.MediaCodecSelector googleOnly = new com.google.android.exoplayer2.mediacodec.MediaCodecSelector() {
+                    @Override
+                    public java.util.List<com.google.android.exoplayer2.mediacodec.MediaCodecInfo> getDecoderInfos(
+                            String mimeType, boolean requiresSecureDecoder, boolean requiresTunnelingDecoder)
+                            throws com.google.android.exoplayer2.mediacodec.MediaCodecUtil.DecoderQueryException {
+                        java.util.List<com.google.android.exoplayer2.mediacodec.MediaCodecInfo> all = com.google.android.exoplayer2.mediacodec.MediaCodecSelector.DEFAULT
+                                .getDecoderInfos(mimeType, requiresSecureDecoder, requiresTunnelingDecoder);
+                        java.util.List<com.google.android.exoplayer2.mediacodec.MediaCodecInfo> google = new java.util.ArrayList<>();
+                        for (com.google.android.exoplayer2.mediacodec.MediaCodecInfo info : all) {
+                            // omx.google.* = 旧版 Google 软解, c2.android.* = 新版 Google 软解
+                            if (info.name.startsWith("omx.google.") || info.name.startsWith("c2.android.")) {
+                                google.add(info);
+                            }
+                        }
+                        return !google.isEmpty() ? google : all;
+                    }
+                };
+                super.buildVideoRenderers(context, extensionRendererMode, googleOnly, enableDecoderFallback,
+                        eventHandler, eventListener, allowedVideoJoiningTimeMs, out);
+            }
+        };
+        rf2.setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER);
+        player = new SimpleExoPlayer.Builder(this, rf2)
+                .setTrackSelector(new DefaultTrackSelector(this)).build();
+        playerView.setPlayer(player);
+        playerView.setUseController(false);
+        playerView.setKeepScreenOn(true);
+        // 重新挂载事件监听（错误处理等）
+        player.addListener(new Player.Listener() {
+            @Override public void onPlaybackStateChanged(int s) {
+                tvBuffering.setVisibility(s == Player.STATE_BUFFERING ? View.VISIBLE : View.GONE);
+                if (s == Player.STATE_READY) {
+                    if (!seeked && seekTs > 0) { player.seekTo(seekTs); seeked = true; }
+                    if (firstReady) { showCtrl(true); firstReady = false; }
+                    btnPlayPause.setText(player.isPlaying() ? "暂停" : "播放");
+                } else if (s == Player.STATE_ENDED) {
+                    if (episodeManager != null && episodeManager.hasNext()) episodeManager.playNext();
+                }
+            }
+            int retryCount = 0;
+            private boolean swDecoderTried = false;
+            @Override public void onPlayerError(PlaybackException e) {
+                StringBuilder sb2 = new StringBuilder("播放错误(软解): " + e.getMessage());
+                Throwable tc = e;
+                while (tc != null) {
+                    sb2.append("\n  ").append(tc.getClass().getSimpleName()).append(": ").append(tc.getMessage());
+                    tc = tc.getCause();
+                }
+                Log.e(TAG, sb2.toString());
+            }
+        });
+        // 重放（直播和普通视频都用 savedPlaybackUrl）
+        if (savedPlaybackUrl != null) {
+            useHls = savedPlaybackUrl.contains(".m3u8");
+            com.google.android.exoplayer2.upstream.DataSource.Factory f = () -> new OkHttpExoDataSource(apiManager.getStreamClient());
+            if (useHls) {
+                player.setMediaSource(new com.google.android.exoplayer2.source.hls.HlsMediaSource.Factory(f).createMediaSource(MediaItem.fromUri(savedPlaybackUrl)));
+            } else {
+                player.setMediaSource(new com.google.android.exoplayer2.source.ProgressiveMediaSource.Factory(f, new DefaultExtractorsFactory()).createMediaSource(MediaItem.fromUri(savedPlaybackUrl)));
+            }
+            player.prepare();
+            player.setPlayWhenReady(true);
+            Log.d(TAG, "已切 Google 软解重试: " + savedPlaybackUrl);
+        }
     }
 
     // ========== 剧集移至 EpisodeManager ==========
@@ -680,7 +807,7 @@ public class PlayerActivity extends AppCompatActivity {
 
             if (isHdr && deviceSupportsHdr()) {
                 boolean userEnabled = getSharedPreferences("fntv_prefs", MODE_PRIVATE)
-                        .getBoolean("hdr_enabled", true);
+                        .getBoolean("hdr_enabled", false);
                 if (userEnabled) {
                     // 尽早设置，减少闪屏
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -694,10 +821,13 @@ public class PlayerActivity extends AppCompatActivity {
                 } else {
                     Log.d(TAG, "用户关闭了 HDR");
                 }
+                updateHdrButtonText();
             } else if (isHdr && !deviceSupportsHdr()) {
                 Log.d(TAG, "设备不支持 HDR，跳过");
-                // 可选：提示用户
                 // showDanmuStatus("设备不支持 HDR 显示");
+                updateHdrButtonText();
+            } else {
+                updateHdrButtonText();
             }
         }, 1500);
     }
@@ -836,9 +966,32 @@ public class PlayerActivity extends AppCompatActivity {
         dialog.show();
     }
 
+    /** 切换 HDR 开关 */
+    private void toggleHdr() {
+        SharedPreferences prefs = getSharedPreferences("fntv_prefs", MODE_PRIVATE);
+        boolean wasEnabled = prefs.getBoolean("hdr_enabled", false);
+        prefs.edit().putBoolean("hdr_enabled", !wasEnabled).apply();
+        applyHdrMode();
+        updateHdrButtonText();
+    }
+
+    /** 更新 HDR 按钮文字 */
+    private void updateHdrButtonText() {
+        if (btnHdrToggle == null) return;
+        boolean enabled = getSharedPreferences("fntv_prefs", MODE_PRIVATE).getBoolean("hdr_enabled", false);
+        boolean videoHdr = isHdrVideo();
+        if (videoHdr) {
+            btnHdrToggle.setText(enabled ? "HDR:开" : "HDR:关");
+            btnHdrToggle.setTextColor(enabled ? 0xFF81C784 : 0xFFE57373);
+        } else {
+            btnHdrToggle.setText("HDR");
+            btnHdrToggle.setTextColor(0xFF808080);
+        }
+    }
+
     private void applyHdrMode() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return;
-        boolean enabled = getSharedPreferences("fntv_prefs", MODE_PRIVATE).getBoolean("hdr_enabled", true);
+        boolean enabled = getSharedPreferences("fntv_prefs", MODE_PRIVATE).getBoolean("hdr_enabled", false);
         boolean videoHdr = isHdrVideo();
         Log.d(TAG, "applyHdrMode: enabled=" + enabled + " videoHdr=" + videoHdr);
         if (enabled && videoHdr) {
@@ -883,23 +1036,33 @@ public class PlayerActivity extends AppCompatActivity {
             // 信息面板内焦点全方向循环（防止方向键逃出面板）
             View btnAudioTrack = findViewById(R.id.btnAudioTrack);
             View btnSubtitleTrack = findViewById(R.id.btnSubtitleTrack);
+            View btnHdr = findViewById(R.id.btnHdrToggle);
             if (btnAudioTrack != null) {
                 btnAudioTrack.setNextFocusUpId(btnCloseInfo.getId());
                 btnAudioTrack.setNextFocusLeftId(btnCloseInfo.getId());
-                btnAudioTrack.setNextFocusRightId(btnSubtitleTrack != null ? btnSubtitleTrack.getId() : btnCloseInfo.getId());
+                btnAudioTrack.setNextFocusRightId(btnSubtitleTrack != null ? btnSubtitleTrack.getId() : (btnHdr != null ? btnHdr.getId() : btnCloseInfo.getId()));
             }
             if (btnSubtitleTrack != null) {
                 btnSubtitleTrack.setNextFocusUpId(btnCloseInfo.getId());
                 btnSubtitleTrack.setNextFocusLeftId(btnAudioTrack != null ? btnAudioTrack.getId() : btnCloseInfo.getId());
-                btnSubtitleTrack.setNextFocusRightId(btnCloseInfo.getId());
+                btnSubtitleTrack.setNextFocusRightId(btnHdr != null ? btnHdr.getId() : btnCloseInfo.getId());
+            }
+            if (btnHdr != null) {
+                btnHdr.setNextFocusUpId(btnCloseInfo.getId());
+                btnHdr.setNextFocusLeftId(btnSubtitleTrack != null ? btnSubtitleTrack.getId() : (btnAudioTrack != null ? btnAudioTrack.getId() : btnCloseInfo.getId()));
+                btnHdr.setNextFocusRightId(btnCloseInfo.getId());
+                btnHdr.setNextFocusDownId(btnCloseInfo.getId());
             }
             int closeDown = btnAudioTrack != null ? btnAudioTrack.getId()
-                    : (btnSubtitleTrack != null ? btnSubtitleTrack.getId() : btnCloseInfo.getId());
+                    : (btnSubtitleTrack != null ? btnSubtitleTrack.getId()
+                    : (btnHdr != null ? btnHdr.getId() : btnCloseInfo.getId()));
             btnCloseInfo.setNextFocusDownId(closeDown);
-            btnCloseInfo.setNextFocusLeftId(btnSubtitleTrack != null ? btnSubtitleTrack.getId()
-                    : (btnAudioTrack != null ? btnAudioTrack.getId() : btnCloseInfo.getId()));
+            btnCloseInfo.setNextFocusLeftId(btnHdr != null ? btnHdr.getId()
+                    : (btnSubtitleTrack != null ? btnSubtitleTrack.getId()
+                    : (btnAudioTrack != null ? btnAudioTrack.getId() : btnCloseInfo.getId())));
             btnCloseInfo.setNextFocusRightId(btnAudioTrack != null ? btnAudioTrack.getId()
-                    : (btnSubtitleTrack != null ? btnSubtitleTrack.getId() : btnCloseInfo.getId()));
+                    : (btnSubtitleTrack != null ? btnSubtitleTrack.getId()
+                    : (btnHdr != null ? btnHdr.getId() : btnCloseInfo.getId())));
             updateInfo();
             btnCloseInfo.post(() -> btnCloseInfo.requestFocus());
         } else {
@@ -949,7 +1112,8 @@ public class PlayerActivity extends AppCompatActivity {
     private final Runnable hideC = () -> {
         // 焦点在控制器按钮上时推迟隐藏，infoPanel/顶栏/无焦点时正常隐藏
         if (controller.hasFocus() || btnDanmu.hasFocus() || btnLock.hasFocus()
-                || btnCloudMode.hasFocus() || btnBrightness.hasFocus() || btnSkip.hasFocus()) {
+                || btnCloudMode.hasFocus() || btnBrightness.hasFocus() || btnSkip.hasFocus()
+                || (btnHdrToggle != null && btnHdrToggle.hasFocus())) {
             resetHideTimer();
             return;
         }
@@ -978,6 +1142,7 @@ public class PlayerActivity extends AppCompatActivity {
         View btnSubtitleTrack = findViewById(R.id.btnSubtitleTrack);
         if (btnAudioTrack != null) btnAudioTrack.setOnFocusChangeListener(l);
         if (btnSubtitleTrack != null) btnSubtitleTrack.setOnFocusChangeListener(l);
+        if (btnHdrToggle != null) btnHdrToggle.setOnFocusChangeListener(l);
         btnCloseInfo.setOnFocusChangeListener(l);
         infoPanel.setOnFocusChangeListener(l);
     };
@@ -1272,6 +1437,7 @@ public class PlayerActivity extends AppCompatActivity {
 
     private TextView tvSeekOverlay;
     private final Runnable hideSeekOverlayR = () -> { if (tvSeekOverlay != null) tvSeekOverlay.setVisibility(View.GONE); };
+
 
     /** 控制栏隐藏时显示进度时间浮层 */
     private void showSeekOverlay() {
