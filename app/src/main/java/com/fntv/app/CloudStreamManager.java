@@ -164,7 +164,8 @@ public class CloudStreamManager {
         Map<String, Object> header = new HashMap<>();
         header.put("User-Agent", new String[]{"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"});
         streamReq.put("header", header);
-        streamReq.put("level", 1);
+        int qualityLevel = prefs.getInt("stream_quality_level", 1);
+        streamReq.put("level", qualityLevel);
         streamReq.put("media_guid", mediaGuid);
         // ip = 账号的 MD5 哈希
         String account = prefs.getString("user", "video");
@@ -664,7 +665,7 @@ public class CloudStreamManager {
 
     // ========== 内部 ==========
 
-    private void reloadPlayback() {
+    public void reloadPlayback() {
         resetForQualitySwitch();
         cb.reloadPlayback(); // triggers loadPlayInfo again
     }

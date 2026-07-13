@@ -62,10 +62,13 @@ public class StreamResponse {
         public int bitrate;
         public String resolution;
         public boolean progressive;
+        @SerializedName("is_m3u8")
+        public boolean isM3u8;
     }
 
     /** 视频流信息 */
     public static class VideoStreamInfo {
+        public String guid;
         public int width;
         public int height;
         public int bps;
@@ -95,6 +98,7 @@ public class StreamResponse {
 
     /** 字幕流信息 */
     public static class SubtitleStreamInfo {
+        public String guid;
         public String title;
         public String language;
         @SerializedName("codec_name")
@@ -107,6 +111,7 @@ public class StreamResponse {
 
     /** 音频流信息 */
     public static class AudioStreamInfo {
+        public String guid;
         public int bps;
         public int channels;
         @SerializedName("sample_rate")

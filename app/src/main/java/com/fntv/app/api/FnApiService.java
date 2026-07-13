@@ -57,6 +57,9 @@ public interface FnApiService {
     @POST("api/v1/play/quality")
     Call<ApiResponse<Object>> getPlayQuality(@Body Object req);
 
+    @POST("api/v1/play/play")
+    Call<ApiResponse<PlayLinkResponse>> getPlayLink(@Body Object req);
+
     @GET("api/v1/stream/list/{guid}")
     Call<ApiResponse<Object>> getStreamList(@Path("guid") String guid);
 

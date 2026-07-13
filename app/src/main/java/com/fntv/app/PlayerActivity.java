@@ -38,7 +38,7 @@ public class PlayerActivity extends AppCompatActivity {
     private SimpleExoPlayer player;
     private TextView tvBuffering, tvTime, infoText;
     private SeekBar seekBar;
-    private Button btnPlayPause, btnRewind, btnForward, btnSpeed, btnRatio, btnInfo, btnCloseInfo, btnEpisodeList, btnNextEp, btnBack, btnDanmu, btnHdrToggle;
+    private Button btnPlayPause, btnRewind, btnForward, btnSpeed, btnRatio, btnInfo, btnCloseInfo, btnEpisodeList, btnNextEp, btnBack, btnDanmu, btnHdrToggle, btnQuality;
     private ImageView btnLock;
     private TextView tvTitle, tvDanmuStatus, tvDanmuMatch, tvSpeedHint, infoTextAudio, infoTextExtra;
     private Button btnCloudMode, btnBrightness, btnSkip;
@@ -48,6 +48,7 @@ public class PlayerActivity extends AppCompatActivity {
     private View controller, infoPanel, topBar;
     private boolean isLocked = false;
     private DanmuManager danmuManager;
+    private QualitySelectHelper qualityHelper;
 
     private Handler handler = new Handler(Looper.getMainLooper());
     private String itemGuid, baseUrl, itemTitle, itemTV, itemPoster, itemCategory, parentGuid;
@@ -69,6 +70,9 @@ public class PlayerActivity extends AppCompatActivity {
     private Runnable seekCommitR;
     private long pendingSeekMs = -1;
     private String savedPlaybackUrl = null; // 当前播放地址（用于硬解失败后切软解重试）
+    private String customQualityRes = "";   // 非原画时的分辨率
+    private int customQualityBitrate = 0;   // 非原画时的码率
+    private String customPlayLink = "";     // 非原画时的 play_link
     private static final String TAG = "Player";
 
     private static final int[] RATIO_MODES = {0, 1, 2};
@@ -122,6 +126,7 @@ public class PlayerActivity extends AppCompatActivity {
         btnSpeed = findViewById(R.id.btnSpeed);
         btnRatio = findViewById(R.id.btnRatio);
         btnInfo = findViewById(R.id.btnInfo);
+        btnQuality = findViewById(R.id.btnQuality);
         btnCloseInfo = findViewById(R.id.btnCloseInfo);
         btnEpisodeList = findViewById(R.id.btnEpisodeList);
         btnNextEp = findViewById(R.id.btnNextEp);
@@ -230,6 +235,64 @@ public class PlayerActivity extends AppCompatActivity {
         btnSpeed.setOnClickListener(v -> cycleSpeed());
         btnRatio.setOnClickListener(v -> cycleRatio());
         btnInfo.setOnClickListener(v -> toggleInfo());
+        qualityHelper = new QualitySelectHelper(this, apiManager, getSharedPreferences("fntv_prefs", MODE_PRIVATE),
+                new QualitySelectHelper.QualityCallback() {
+                    @Override public void onQualityChanged(int level) {
+                        customQualityRes = "";
+                        customQualityBitrate = 0;
+                        customPlayLink = "";
+                        if (cloudStreamManager != null) {
+                            getSharedPreferences("fntv_prefs", MODE_PRIVATE)
+                                    .edit().putInt("stream_quality_level", level).apply();
+                            cloudStreamManager.reloadPlayback();
+                        }
+                    }
+                    @Override public void onPlayLinkChanged(String playLink, String res, int bps) {
+                        customQualityRes = res;
+                        customQualityBitrate = bps;
+                        customPlayLink = playLink;
+                        // 记录切换前的播放位置（秒）
+                        final long seekPosMs = player != null ? Math.max(0, player.getCurrentPosition()) : 0;
+                        String fullUrl = baseUrl + playLink;
+                        Log.d(TAG, "画质切换新链接: " + fullUrl + " res=" + res + " bitrate=" + bps + " seek=" + seekPosMs);
+                        if (player != null) {
+                            savedPlaybackUrl = fullUrl;
+                            useHls = fullUrl.contains(".m3u8");
+                            com.google.android.exoplayer2.upstream.DataSource.Factory f = () -> new OkHttpExoDataSource(apiManager.getStreamClient());
+                            if (useHls) {
+                                player.setMediaSource(new com.google.android.exoplayer2.source.hls.HlsMediaSource.Factory(f).createMediaSource(MediaItem.fromUri(fullUrl)));
+                            } else {
+                                player.setMediaSource(new com.google.android.exoplayer2.source.ProgressiveMediaSource.Factory(f, new DefaultExtractorsFactory()).createMediaSource(MediaItem.fromUri(fullUrl)));
+                            }
+                            player.prepare();
+                            player.setPlayWhenReady(true);
+                            // 等播放器就绪后 seek 到切换前位置 + 更新信息面板
+                            player.addListener(new Player.Listener() {
+                                @Override public void onPlaybackStateChanged(int s) {
+                                    if (s == Player.STATE_READY) {
+                                        if (seekPosMs > 0) player.seekTo(seekPosMs);
+                                        updateInfo();
+                                        player.removeListener(this);
+                                    }
+                                }
+                            });
+                        }
+                    }
+                    @Override public String getMediaGuid() { return mediaGuid; }
+                    @Override public String getAccount() {
+                        return getSharedPreferences("fntv_prefs", MODE_PRIVATE).getString("user", "video");
+                    }
+                    @Override public long getPlaybackPosition() {
+                        return player != null ? player.getCurrentPosition() / 1000 : 0;
+                    }
+                });
+        if (btnQuality != null) {
+            btnQuality.setOnClickListener(v -> qualityHelper.showQualityDialog());
+            // 初始检查：如果右上角直链按钮已显示，隐藏画质按钮
+            if (btnCloudMode.getVisibility() == View.VISIBLE) {
+                btnQuality.setVisibility(View.GONE);
+            }
+        }
         btnBack.setOnClickListener(v -> { restoreOrientation(); finish(); });
         btnDanmu.setOnClickListener(v -> danmuManager.showSettings());
         btnLock.setOnClickListener(v -> {
@@ -322,6 +385,8 @@ public class PlayerActivity extends AppCompatActivity {
                         tvDanmuMatch.setLayoutParams(lp);
                     }
                 }
+                // 直链/STRM 按钮显示时，隐藏画质按钮
+                if (vis && btnQuality != null) btnQuality.setVisibility(View.GONE);
             }
             @Override public void runOnUiThread(Runnable r) { PlayerActivity.this.runOnUiThread(r); }
         }, btnCloudMode, getSharedPreferences("fntv_prefs", MODE_PRIVATE));
@@ -432,7 +497,7 @@ public class PlayerActivity extends AppCompatActivity {
         DefaultRenderersFactory rf = new DefaultRenderersFactory(this);
         if ("software".equals(getSharedPreferences("fntv_prefs", MODE_PRIVATE).getString("decoder_mode", "hardware"))) {
             rf.setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER);
-        }else {
+        } else {
             rf.setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_ON);
         }
         player = new SimpleExoPlayer.Builder(this, rf)
@@ -800,35 +865,12 @@ public class PlayerActivity extends AppCompatActivity {
     private void checkHdr() {
         handler.postDelayed(() -> {
             if (player == null) return;
-            boolean isHdr = isHdrVideo();
-            Log.d(TAG, "HDR检查: isHdr=" + isHdr
+            Log.d(TAG, "HDR检查: isHdr=" + isHdrVideo()
                     + " streamVHdr=" + streamVHdr
                     + " color=" + streamVColor);
-
-            if (isHdr && deviceSupportsHdr()) {
-                boolean userEnabled = getSharedPreferences("fntv_prefs", MODE_PRIVATE)
-                        .getBoolean("hdr_enabled", false);
-                if (userEnabled) {
-                    // 尽早设置，减少闪屏
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                        getWindow().setColorMode(ActivityInfo.COLOR_MODE_HDR);
-                    }
-                    if (!hdrNotified) {
-                        hdrNotified = true;
-                        danmuManager.showDanmuStatus("HDR 模式已激活");
-                    }
-                    Log.d(TAG, "HDR 模式已激活");
-                } else {
-                    Log.d(TAG, "用户关闭了 HDR");
-                }
-                updateHdrButtonText();
-            } else if (isHdr && !deviceSupportsHdr()) {
-                Log.d(TAG, "设备不支持 HDR，跳过");
-                // showDanmuStatus("设备不支持 HDR 显示");
-                updateHdrButtonText();
-            } else {
-                updateHdrButtonText();
-            }
+            // 统一用 applyHdrMode 处理开/关（切剧集、重缓冲时也会正确切换 colorMode）
+            applyHdrMode();
+            updateHdrButtonText();
         }, 1500);
     }
 
@@ -1008,9 +1050,22 @@ public class PlayerActivity extends AppCompatActivity {
         if (vf != null && vf.colorInfo != null) {
             int cs = vf.colorInfo.colorSpace;
             int ct = vf.colorInfo.colorTransfer;
-            if (cs >= 6 || ct == 7 || ct == 16 || ct == 18) return true;
+            if (cs >= 6 && (ct == 7 || ct == 16 || ct == 18)) return true;
         }
-        return streamVHdr || (!streamVColor.isEmpty() && (streamVColor.contains("bt2020") || streamVColor.contains("2020")));
+        // streamVHdr（杜比视界）→ 仅在设备支持 Dolby Vision 时算 HDR
+        if (streamVHdr) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                android.view.Display.HdrCapabilities caps = getWindowManager()
+                        .getDefaultDisplay().getHdrCapabilities();
+                if (caps != null) {
+                    for (int type : caps.getSupportedHdrTypes()) {
+                        if (type == android.view.Display.HdrCapabilities.HDR_TYPE_DOLBY_VISION) return true;
+                    }
+                }
+            }
+            return false;
+        }
+        return !streamVColor.isEmpty() && (streamVColor.contains("bt2020") || streamVColor.contains("2020"));
     }
 
     /** 调节屏幕亮度（仅当前 Activity），val 0~200，100=系统默认 */
@@ -1069,6 +1124,8 @@ public class PlayerActivity extends AppCompatActivity {
             // 关闭时恢复焦点导航
             ((ViewGroup) controller).setDescendantFocusability(ViewGroup.FOCUS_AFTER_DESCENDANTS);
             ((ViewGroup) topBar).setDescendantFocusability(ViewGroup.FOCUS_AFTER_DESCENDANTS);
+            // 确保控制栏可见，否则焦点无法设置到按钮上
+            showCtrl(true);
             btnInfo.requestFocus();
         }
     }
@@ -1113,7 +1170,9 @@ public class PlayerActivity extends AppCompatActivity {
         // 焦点在控制器按钮上时推迟隐藏，infoPanel/顶栏/无焦点时正常隐藏
         if (controller.hasFocus() || btnDanmu.hasFocus() || btnLock.hasFocus()
                 || btnCloudMode.hasFocus() || btnBrightness.hasFocus() || btnSkip.hasFocus()
-                || (btnHdrToggle != null && btnHdrToggle.hasFocus())) {
+                || btnInfo.hasFocus() || btnBack.hasFocus()
+                || (btnHdrToggle != null && btnHdrToggle.hasFocus())
+                || (btnQuality != null && btnQuality.hasFocus())) {
             resetHideTimer();
             return;
         }
@@ -1130,6 +1189,7 @@ public class PlayerActivity extends AppCompatActivity {
         btnSpeed.setOnFocusChangeListener(l);
         btnRatio.setOnFocusChangeListener(l);
         btnInfo.setOnFocusChangeListener(l);
+        if (btnQuality != null) btnQuality.setOnFocusChangeListener(l);
         btnEpisodeList.setOnFocusChangeListener(l);
         btnNextEp.setOnFocusChangeListener(l);
         btnBack.setOnFocusChangeListener(l);
@@ -1213,15 +1273,16 @@ public class PlayerActivity extends AppCompatActivity {
         v.append("── 视频 ──\n");
         String codec = FormatUtils.fmtVideoCodec(streamVCodec.isEmpty() ? (vf != null ? vf.codecs : null) : streamVCodec);
         v.append("编码 ").append(codec).append("\n");
-        int w = streamVWidth > 0 ? streamVWidth : (vf != null ? vf.width : 0);
-        int h = streamVHeight > 0 ? streamVHeight : (vf != null ? vf.height : 0);
+        // 优先用 ExoPlayer 实际解码的格式（切换画质后自动更新）
+        int w = vf != null && vf.width > 0 ? vf.width : streamVWidth;
+        int h = vf != null && vf.height > 0 ? vf.height : streamVHeight;
         if (w > 0 && h > 0) v.append("分辨率 ").append(w).append("×").append(h).append("\n");
         float fps = 0;
         if (!streamVFps.isEmpty()) { try { fps = Float.parseFloat(streamVFps.replaceAll("[^0-9.]", "")); } catch (Exception ignored) {} }
         if (fps <= 0 && vf != null) fps = vf.frameRate;
         if (fps > 0) v.append("帧率 ").append(String.format("%.3f fps", fps)).append("\n");
-        if (streamBitrate > 0) v.append("码率 ").append(FormatUtils.formatBitrate(streamBitrate)).append("\n");
-        else if (vf != null && vf.bitrate > 0) v.append("码率 ").append(vf.bitrate/1000).append("kbps\n");
+        if (vf != null && vf.bitrate > 0) v.append("码率 ").append(FormatUtils.formatBitrate(vf.bitrate)).append("\n");
+        else if (streamBitrate > 0) v.append("码率 ").append(FormatUtils.formatBitrate(streamBitrate)).append("\n");
         if (streamVBitDepth > 0) v.append("色深 ").append(streamVBitDepth).append("bit\n");
         if (streamVHdr || (vf != null && vf.colorInfo != null)) v.append("HDR10\n");
         v.append("解码 ").append(actualVideoDecoder.isEmpty() ? (isHwDecode ? "硬解" : "软解") : actualVideoDecoder);
@@ -1304,7 +1365,15 @@ public class PlayerActivity extends AppCompatActivity {
         r.put("video_guid", videoGuid != null ? videoGuid : "");
         r.put("audio_guid", audioGuid != null ? audioGuid : "");
         r.put("subtitle_guid", subtitleGuid != null ? subtitleGuid : "_no_display_");
-        r.put("resolution", !streamResolution.isEmpty() ? streamResolution : (resolution != null ? resolution : "")); r.put("bitrate", streamBitrate);
+        // 非原画模式：用切换后的分辨率和码率，并记录 play_link
+        if (customQualityBitrate > 0 && !customQualityRes.isEmpty()) {
+            r.put("resolution", customQualityRes);
+            r.put("bitrate", customQualityBitrate);
+            if (!customPlayLink.isEmpty()) r.put("play_link", customPlayLink);
+        } else {
+            r.put("resolution", !streamResolution.isEmpty() ? streamResolution : (resolution != null ? resolution : ""));
+            r.put("bitrate", streamBitrate);
+        }
         r.put("ts", ts); r.put("duration", itemDuration > 0 ? itemDuration : player.getDuration()/1000);
         apiManager.setReferer(baseUrl + "/v/video/" + itemGuid + "?media_guid=" + mediaGuid);
         Log.d(TAG, "recordPlayStatus 请求: " + (r != null ? new com.google.gson.Gson().toJson(r) : "null"));
