@@ -1,7 +1,7 @@
 {
-    "versionCode": 17,
-    "versionName": "1.1.7",
-    "apkUrl": "https://gitee.com/coffee710/fntv/releases/download/v1.1.7/FNTV_release_v1.1.7_20260621_1450.apk",
-    "changelog": "1.修复安卓7闪退问题\n2.修复手机更新无法安装问题",
+    "versionCode": 18,
+    "versionName": "1.1.8",
+    "apkUrl": "https://gitee.com/coffee710/fntv/releases/download/v1.1.8/FNTV_release_v1.1.8_20260713_2148.apk",
+    "changelog": "1.新增直播源显示\n2.新增HDR开关（实际毫无卵用）\n3.修复多季只能显示一季的问题\n4.新增画质切换功能",
     "forceUpdate": false
   }
