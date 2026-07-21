@@ -589,9 +589,10 @@ public class PlayerActivity extends AppCompatActivity {
                     tc = tc.getCause();
                 }
                 Log.e(TAG, sb2.toString());
-                // 视频解码器崩溃 → 自动切软解重试
-                if (!swDecoderTried && e instanceof ExoPlaybackException
-                        && e.getCause() instanceof com.google.android.exoplayer2.video.MediaCodecVideoDecoderException) {
+                // 视频/音频解码器崩溃 → 自动切软解重试
+                if (!swDecoderTried && e.getMessage() != null
+                        && (e.getMessage().contains("MediaCodecVideoRenderer")
+                            || e.getMessage().contains("MediaCodecAudioRenderer"))) {
                     swDecoderTried = true;
                     Log.d(TAG, "硬解失败，切换到软解重试");
                     getSharedPreferences("fntv_prefs", MODE_PRIVATE)
@@ -1462,7 +1463,7 @@ public class PlayerActivity extends AppCompatActivity {
                 case KeyEvent.KEYCODE_DPAD_CENTER: case KeyEvent.KEYCODE_ENTER:
                 case KeyEvent.KEYCODE_DPAD_UP:
                     showCtrl(true);
-                    btnPlayPause.requestFocus();
+                    btnPlayPause.post(() -> btnPlayPause.requestFocus());
                     return true;
                 case KeyEvent.KEYCODE_DPAD_LEFT:
                 case KeyEvent.KEYCODE_DPAD_RIGHT: {
