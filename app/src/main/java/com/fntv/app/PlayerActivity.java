@@ -49,6 +49,7 @@ public class PlayerActivity extends AppCompatActivity {
     private boolean isLocked = false;
     private DanmuManager danmuManager;
     private QualitySelectHelper qualityHelper;
+    private SubtitleMergeOverlay subtitleMerge;
 
     private Handler handler = new Handler(Looper.getMainLooper());
     private String itemGuid, baseUrl, itemTitle, itemTV, itemPoster, itemCategory, parentGuid;
@@ -157,6 +158,13 @@ public class PlayerActivity extends AppCompatActivity {
             @Override public String getParentGuid() { return parentGuid; }
         }, danmuView, tvDanmuStatus, tvDanmuMatch, btnDanmu, prefs);
         danmuManager.initFromPrefs();
+
+        // 字幕合并覆层
+        if (playerView.getSubtitleView() != null) {
+            playerView.getSubtitleView().setVisibility(View.GONE);
+        }
+        FrameLayout playerRoot = (FrameLayout) playerView.getParent();
+        subtitleMerge = new SubtitleMergeOverlay(playerRoot);
 
         findViewById(android.R.id.content).setOnTouchListener(new View.OnTouchListener() {
             private boolean longPressing = false;
@@ -630,6 +638,20 @@ public class PlayerActivity extends AppCompatActivity {
                     }, 2000 * retryCount);
                 }
             }
+            @Override public void onCues(java.util.List<com.google.android.exoplayer2.text.Cue> cues) {
+                if (subtitleMerge != null) {
+                    subtitleMerge.onNewCues(cues);
+                }
+                if (cues != null && TAG.equals("Player")) {
+                    Log.d(TAG, "字幕Cues数量: " + cues.size());
+                    for (int i = 0; i < cues.size(); i++) {
+                        com.google.android.exoplayer2.text.Cue c = cues.get(i);
+                        Log.d(TAG, "  Cue[" + i + "] text=" + c.text
+                                + " position=" + c.position
+                                + " line=" + c.line);
+                    }
+                }
+            }
         });
 
 
@@ -712,6 +734,7 @@ public class PlayerActivity extends AppCompatActivity {
             episodeManager.loadList(parentGuid);
     }
 
+    /** 下载 ASS 字幕 → 合并双语 Dialogue → 保存到缓存 */
     /** 直播频道播放（直接用 live_channels 返回的地址） */
     private void playLiveStream(String url) {
         if (player == null) return;
