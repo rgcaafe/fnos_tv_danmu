@@ -20,21 +20,24 @@ public class SubtitleMergeOverlay {
 
     private static final long MATCH_WINDOW_MS = 80;
     private final TextView overlay;
+    private final FrameLayout parent;
     private List<CharSequence> prevTexts = new ArrayList<>();
     private long prevCueTime = 0;
     private boolean hasMerged = false;
     private boolean enabled = true;
+    private View subtitleView; // ExoPlayer 原版字幕视图
 
     public SubtitleMergeOverlay(FrameLayout parent) {
+        this.parent = parent;
         overlay = new TextView(parent.getContext());
         FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT);
         lp.gravity = Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL;
-        lp.bottomMargin = (int) (10 * parent.getResources().getDisplayMetrics().density);
+        lp.bottomMargin = (int) (20 * parent.getResources().getDisplayMetrics().density);
         overlay.setLayoutParams(lp);
         overlay.setTextColor(Color.WHITE);
-        overlay.setTextSize(18);
+        overlay.setTextSize(22);
         overlay.setShadowLayer(3, 0, 2, Color.BLACK);
         overlay.setGravity(Gravity.CENTER);
         overlay.setVisibility(View.GONE);
@@ -46,10 +49,31 @@ public class SubtitleMergeOverlay {
 
     public void setEnabled(boolean enabled) { this.enabled = enabled; }
     public TextView getView() { return overlay; }
+    /** 设置 ExoPlayer 原版字幕视图，图形字幕退回原版渲染 */
+    public void setSubtitleView(View v) { this.subtitleView = v; }
+    public View getSubtitleView() { return subtitleView; }
+
+    /** 是否有图形字幕（PGS/DVB 等，text=null） */
+    public boolean hasBitmapCue(List<Cue> cues) {
+        if (cues == null) return false;
+        for (Cue c : cues) {
+            if (c.text == null && c.bitmap != null) return true;
+        }
+        return false;
+    }
 
     public void onNewCues(List<Cue> cues) {
         if (!enabled || cues == null) return;
         if (cues.isEmpty()) { clear(); return; }
+
+        // 图形字幕 → 显示原版 SubtitleView，隐藏覆层
+        if (hasBitmapCue(cues)) {
+            if (subtitleView != null) subtitleView.setVisibility(View.VISIBLE);
+            overlay.setVisibility(View.GONE);
+            return;
+        }
+        // 文字字幕 → 隐藏原版 SubtitleView，使用覆层
+        if (subtitleView != null) subtitleView.setVisibility(View.GONE);
 
         long now = System.currentTimeMillis();
         List<CharSequence> curTexts = new ArrayList<>();

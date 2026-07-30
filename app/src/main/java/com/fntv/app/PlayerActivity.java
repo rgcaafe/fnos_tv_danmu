@@ -160,11 +160,12 @@ public class PlayerActivity extends AppCompatActivity {
         danmuManager.initFromPrefs();
 
         // 字幕合并覆层
-        if (playerView.getSubtitleView() != null) {
-            playerView.getSubtitleView().setVisibility(View.GONE);
-        }
         FrameLayout playerRoot = (FrameLayout) playerView.getParent();
         subtitleMerge = new SubtitleMergeOverlay(playerRoot);
+        if (playerView.getSubtitleView() != null) {
+            playerView.getSubtitleView().setVisibility(View.GONE);
+            subtitleMerge.setSubtitleView(playerView.getSubtitleView());
+        }
 
         findViewById(android.R.id.content).setOnTouchListener(new View.OnTouchListener() {
             private boolean longPressing = false;
@@ -282,6 +283,9 @@ public class PlayerActivity extends AppCompatActivity {
                                         updateInfo();
                                         player.removeListener(this);
                                     }
+                                }
+                                @Override public void onCues(java.util.List<com.google.android.exoplayer2.text.Cue> cues) {
+                                    if (subtitleMerge != null) subtitleMerge.onNewCues(cues);
                                 }
                             });
                         }
@@ -809,6 +813,9 @@ public class PlayerActivity extends AppCompatActivity {
             }
             int retryCount = 0;
             private boolean swDecoderTried = false;
+            @Override public void onCues(java.util.List<com.google.android.exoplayer2.text.Cue> cues) {
+                if (subtitleMerge != null) subtitleMerge.onNewCues(cues);
+            }
             @Override public void onPlayerError(PlaybackException e) {
                 StringBuilder sb2 = new StringBuilder("播放错误(软解): " + e.getMessage());
                 Throwable tc = e;
