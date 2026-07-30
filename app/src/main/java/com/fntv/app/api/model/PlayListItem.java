@@ -1,6 +1,7 @@
 package com.fntv.app.api.model;
 
 import com.google.gson.annotations.SerializedName;
+import java.util.List;
 
 /**
  * 媒体列表项
@@ -69,6 +70,9 @@ public class PlayListItem {
     @SerializedName("single_child_guid")
     public String singleChildGuid;
 
+    @SerializedName("media_stream")
+    public MediaStreamInfo mediaStream;
+
     @SerializedName("douban_id")
     public long doubanId;
 
@@ -92,6 +96,14 @@ public class PlayListItem {
 
     @SerializedName("local_number_of_episodes")
     public int localNumberOfEpisodes;
+
+    public static class MediaStreamInfo {
+        public List<String> resolutions;
+        @SerializedName("audio_type")
+        public Object audioType;
+        @SerializedName("color_range_type")
+        public Object colorRangeType;
+    }
 
     /** 判断是否为文件夹/分类（可浏览进入） */
     public boolean isFolder() {

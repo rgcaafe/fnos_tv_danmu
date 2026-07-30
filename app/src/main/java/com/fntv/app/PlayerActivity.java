@@ -142,6 +142,8 @@ public class PlayerActivity extends AppCompatActivity {
         tvSpeedHint = findViewById(R.id.tvSpeedHint);
         topBar = findViewById(R.id.topBar);
         controller = findViewById(R.id.controller);
+        controller.setOnTouchListener((v, e) -> true);
+        topBar.setOnTouchListener((v, e) -> true);
         infoPanel = findViewById(R.id.infoPanel);
         infoText = findViewById(R.id.infoText);
         infoTextAudio = findViewById(R.id.infoTextAudio);
@@ -207,7 +209,11 @@ public class PlayerActivity extends AppCompatActivity {
                             }
                             return true;
                         } else {
-                            showCtrl(true);
+                            if (ctrlVis) {
+                                showCtrl(false);
+                            } else {
+                                showCtrl(true);
+                            }
                         }
                         return true;
                 }
@@ -1435,12 +1441,14 @@ public class PlayerActivity extends AppCompatActivity {
                 isLocked = false;
                 btnLock.setImageResource(R.drawable.ic_unlock);
                 showCtrl(true);
+                btnPlayPause.postDelayed(new Runnable() { @Override public void run() { btnPlayPause.requestFocus(); } }, 50);
                 return true;
             }
             if (k == KeyEvent.KEYCODE_DPAD_CENTER || k == KeyEvent.KEYCODE_ENTER) {
                 isLocked = false;
                 btnLock.setImageResource(R.drawable.ic_unlock);
                 showCtrl(true);
+                btnPlayPause.postDelayed(new Runnable() { @Override public void run() { btnPlayPause.requestFocus(); } }, 50);
                 return true;
             }
             return true;
@@ -1493,7 +1501,7 @@ public class PlayerActivity extends AppCompatActivity {
                 case KeyEvent.KEYCODE_DPAD_CENTER: case KeyEvent.KEYCODE_ENTER:
                 case KeyEvent.KEYCODE_DPAD_UP:
                     showCtrl(true);
-                    btnPlayPause.post(() -> btnPlayPause.requestFocus());
+                    btnPlayPause.postDelayed(new Runnable() { @Override public void run() { btnPlayPause.requestFocus(); } }, 50);
                     return true;
                 case KeyEvent.KEYCODE_DPAD_LEFT:
                 case KeyEvent.KEYCODE_DPAD_RIGHT: {

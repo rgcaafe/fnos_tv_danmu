@@ -79,6 +79,10 @@ public interface FnApiService {
     @GET("api/v1/play/list")
     Call<ApiResponse<List<PlayListItem>>> getPlayList();
 
+    // ========== 搜索 ==========
+    @GET("api/v1/search/list")
+    Call<ApiResponse<List<PlayListItem>>> search(@Query("q") String query);
+
     // ========== 字幕 ==========
     @GET("api/v1/subtitle/dl/{id}")
     Call<ResponseBody> downloadSubtitle(@Path("id") String id);

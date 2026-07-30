@@ -14,12 +14,14 @@ import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.inputmethod.EditorInfo;
 import android.widget.*;
 import androidx.appcompat.app.AppCompatActivity;
 import com.fntv.app.api.FnApiManager;
 import com.fntv.app.api.model.*;
 import com.fntv.app.util.SimpleImageLoader;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -33,6 +35,8 @@ public class HomeActivity extends AppCompatActivity {
     private View panelMovies, panelLibrary, panelSettings;
     private LinearLayout moviesContainer, libraryContainer;
     private TextView tvMoviesLoading, tvLibraryLoading, tvLibraryEmpty;
+    private EditText etSearch;
+    private boolean isSearching = false;
     private TextView tvSettingUsername, tvSettingServer, tvDecoderValue, tvDanmuUrl;
     private Button btnLogout, btnFeedback;
     private UpdateManager updateManager;
@@ -44,6 +48,14 @@ public class HomeActivity extends AppCompatActivity {
     private boolean showingOverview = true;
     private boolean showingEpisodes = false;
     private boolean loadingPreviews = false;
+
+    // 媒体库浏览排序状态
+    private String currentBrowseGuid;
+    private String currentBrowseTitle;
+    private LinearLayout currentBrowseContainer;
+    private TextView currentBrowseLoading;
+    private int libSortColumnIndex = 0; // 0=添加日期, 1=发行日期
+    private int libSortOrderIndex = 1;  // 0=升序, 1=降序
 
     private FnApiManager apiManager;
     private String baseUrl = "";
@@ -113,6 +125,7 @@ public class HomeActivity extends AppCompatActivity {
         setupLogout();
         updateManager.setup();
         setupFeedback();
+        setupSearch();
 
         switchTab(0);
         tvMoviesLoading.setVisibility(View.VISIBLE);
@@ -130,6 +143,7 @@ public class HomeActivity extends AppCompatActivity {
         panelSettings = findViewById(R.id.panelSettings);
         moviesContainer = findViewById(R.id.moviesGridContainer);
         libraryContainer = findViewById(R.id.libraryGridContainer);
+        etSearch = findViewById(R.id.etSearch);
         tvMoviesLoading = findViewById(R.id.tvMoviesLoading);
         tvLibraryLoading = findViewById(R.id.tvLibraryLoading);
         tvLibraryEmpty = findViewById(R.id.tvLibraryEmpty);
@@ -738,10 +752,22 @@ public class HomeActivity extends AppCompatActivity {
         savedBrowseGuid = ancestorGuid; savedBrowseTitle = title;
         browseFromLibrary = (container == libraryContainer);
         if (container == moviesContainer) showingOverview = false;
+
+        // 存储当前浏览上下文，排序变化时用于重新加载
+        currentBrowseGuid = ancestorGuid;
+        currentBrowseTitle = title;
+        currentBrowseContainer = container;
+        currentBrowseLoading = loadingView;
+
         container.removeAllViews();
         loadingView.setVisibility(View.VISIBLE);
 
-        apiManager.getApi().getItemList(ItemListRequest.browseLibrary(ancestorGuid))
+        String sortColumn = libSortColumnIndex == 0 ? "create_time" : "release_date";
+        String sortType = libSortOrderIndex == 0 ? "ASC" : "DESC";
+        ItemListRequest request = new ItemListRequest(ancestorGuid,
+                Arrays.asList("Movie", "TV", "Directory", "Video"),
+                true, sortColumn, sortType, 50);
+        apiManager.getApi().getItemList(request)
                 .enqueue(new Callback<ApiResponse<ItemListResponse>>() {
             @Override
             public void onResponse(Call<ApiResponse<ItemListResponse>> call,
@@ -765,6 +791,13 @@ public class HomeActivity extends AppCompatActivity {
                     h.setTextColor(0xFFEEEEEE);
                     h.setTextSize(14);
                     container.addView(h);
+
+                    // 排序筛选栏
+                    LinearLayout sortFilterBar = makeLibSortFilterBar();
+                    sortFilterBar.setTag("lib_sort_bar");
+                    container.addView(sortFilterBar);
+                    container.addView(makeSpacer(6));
+
                     // 自适应列数网格（最小卡片宽200dp）
                     float density = getResources().getDisplayMetrics().density;
                     int cols = Math.max(3, (int) (getResources().getDisplayMetrics().widthPixels / (130 * density)));
@@ -878,6 +911,114 @@ public class HomeActivity extends AppCompatActivity {
             container.addView(makeSpacer(12));
         }
         new Handler(Looper.getMainLooper()).post(() -> loadImagesLazily(container, 0));
+    }
+
+    // ==================== 媒体库排序筛选 ====================
+
+    /** 使用当前排序重新加载媒体库内容 */
+    private void reFetchLibraryItems() {
+        if (currentBrowseGuid == null || currentBrowseContainer == null) return;
+        browseItemsInContainer(currentBrowseGuid, currentBrowseTitle,
+                currentBrowseContainer, currentBrowseLoading);
+    }
+
+    /** 构建排序筛选栏 */
+    private LinearLayout makeLibSortFilterBar() {
+        LinearLayout bar = new LinearLayout(this);
+        bar.setLayoutParams(new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        bar.setOrientation(LinearLayout.HORIZONTAL);
+        bar.setBackgroundResource(R.drawable.bg_input);
+        bar.setPadding(16, 18, 16, 18);
+
+        // 排序方式标签
+        TextView sortLabel = new TextView(this);
+        sortLabel.setLayoutParams(new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        sortLabel.setGravity(Gravity.CENTER_VERTICAL);
+        sortLabel.setText("排序方式: ");
+        sortLabel.setTextColor(0xFFB0B0B0);
+        sortLabel.setTextSize(13);
+        bar.addView(sortLabel);
+
+        // 排序列选择按钮
+        Button sortColumnBtn = new Button(this);
+        sortColumnBtn.setLayoutParams(new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, 78));
+        sortColumnBtn.setBackgroundResource(R.drawable.bg_btn_primary);
+        String[] colLabels = {"添加日期", "发行日期"};
+        sortColumnBtn.setText(colLabels[libSortColumnIndex] + " ▾");
+        sortColumnBtn.setTextColor(0xFFEEEEEE);
+        sortColumnBtn.setTextSize(12);
+        sortColumnBtn.setFocusable(true);
+        sortColumnBtn.setPadding(14, 0, 14, 0);
+        sortColumnBtn.setOnFocusChangeListener((v, hasFocus) -> {
+            v.setScaleX(hasFocus ? 1.08f : 1.0f);
+            v.setScaleY(hasFocus ? 1.08f : 1.0f);
+        });
+        final Button colBtnRef = sortColumnBtn;
+        sortColumnBtn.setOnClickListener(v ->
+                new android.app.AlertDialog.Builder(this)
+                        .setTitle("排序方式")
+                        .setSingleChoiceItems(colLabels, libSortColumnIndex,
+                                (dialog, which) -> {
+                                    libSortColumnIndex = which;
+                                    colBtnRef.setText(colLabels[which] + " ▾");
+                                    dialog.dismiss();
+                                    reFetchLibraryItems();
+                                })
+                        .setNegativeButton("取消", null)
+                        .show()
+        );
+        bar.addView(sortColumnBtn);
+
+        // 弹性间隔
+        View spacer = new View(this);
+        spacer.setLayoutParams(new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1));
+        bar.addView(spacer);
+
+        // 顺序标签
+        TextView orderLabel = new TextView(this);
+        orderLabel.setLayoutParams(new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        orderLabel.setGravity(Gravity.CENTER_VERTICAL);
+        orderLabel.setText("顺序: ");
+        orderLabel.setTextColor(0xFFB0B0B0);
+        orderLabel.setTextSize(13);
+        bar.addView(orderLabel);
+
+        // 排序顺序选择按钮
+        Button sortOrderBtn = new Button(this);
+        sortOrderBtn.setLayoutParams(new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, 78));
+        sortOrderBtn.setBackgroundResource(R.drawable.bg_btn_primary);
+        String[] orderLabels = {"升序", "降序"};
+        sortOrderBtn.setText(orderLabels[libSortOrderIndex] + " ▾");
+        sortOrderBtn.setTextColor(0xFFEEEEEE);
+        sortOrderBtn.setTextSize(12);
+        sortOrderBtn.setFocusable(true);
+        sortOrderBtn.setPadding(14, 0, 14, 0);
+        sortOrderBtn.setOnFocusChangeListener((v, hasFocus) -> {
+            v.setScaleX(hasFocus ? 1.08f : 1.0f);
+            v.setScaleY(hasFocus ? 1.08f : 1.0f);
+        });
+        final Button orderBtnRef = sortOrderBtn;
+        sortOrderBtn.setOnClickListener(v ->
+                new android.app.AlertDialog.Builder(this)
+                        .setTitle("排序顺序")
+                        .setSingleChoiceItems(orderLabels, libSortOrderIndex,
+                                (dialog, which) -> {
+                                    libSortOrderIndex = which;
+                                    orderBtnRef.setText(orderLabels[which] + " ▾");
+                                    dialog.dismiss();
+                                    reFetchLibraryItems();
+                                })
+                        .setNegativeButton("取消", null)
+                        .show()
+        );
+        bar.addView(sortOrderBtn);
+
+        return bar;
     }
 
     /** 启动播放器 */
@@ -1559,6 +1700,7 @@ public class HomeActivity extends AppCompatActivity {
 
 
     private void loadMediaLibraries() {
+        isSearching = false;
         clearContainer(libraryContainer, tvLibraryLoading, tvLibraryEmpty);
         tvLibraryLoading.setVisibility(View.VISIBLE);
 
@@ -1597,6 +1739,117 @@ public class HomeActivity extends AppCompatActivity {
         });
     }
 
+    // ==================== 搜索 ====================
+
+    private void setupSearch() {
+        etSearch.setOnEditorActionListener((v, actionId, event) -> {
+            if (actionId == EditorInfo.IME_ACTION_SEARCH
+                    || (event != null && event.getKeyCode() == KeyEvent.KEYCODE_ENTER)) {
+                performSearch(v.getText().toString().trim());
+                return true;
+            }
+            return false;
+        });
+        etSearch.setOnKeyListener((v, keyCode, event) -> {
+            if (event.getAction() == KeyEvent.ACTION_DOWN && keyCode == KeyEvent.KEYCODE_ENTER) {
+                performSearch(((EditText) v).getText().toString().trim());
+                return true;
+            }
+            return false;
+        });
+    }
+
+    private void performSearch(String query) {
+        if (query.isEmpty()) {
+            clearSearch();
+            return;
+        }
+        isSearching = true;
+        libraryContainer.removeAllViews();
+        tvLibraryLoading.setVisibility(View.VISIBLE);
+        tvLibraryLoading.setText("搜索中...");
+
+        SearchHelper.search(apiManager, query, new SearchHelper.SearchCallback() {
+            @Override
+            public void onResults(List<PlayListItem> results) {
+                tvLibraryLoading.setVisibility(View.GONE);
+                showSearchResults(results);
+            }
+
+            @Override
+            public void onEmpty() {
+                tvLibraryLoading.setVisibility(View.GONE);
+                showSearchEmpty();
+            }
+
+            @Override
+            public void onError(String msg) {
+                tvLibraryLoading.setVisibility(View.GONE);
+                tvLibraryEmpty.setText(msg);
+                tvLibraryEmpty.setVisibility(View.VISIBLE);
+            }
+        });
+    }
+
+    private void showSearchResults(List<PlayListItem> results) {
+        libraryContainer.removeAllViews();
+        float density = getResources().getDisplayMetrics().density;
+        int cols = Math.max(3, (int) (getResources().getDisplayMetrics().widthPixels / (130 * density)));
+        for (int idx = 0; idx < results.size(); idx += cols) {
+            LinearLayout row = new LinearLayout(this);
+            row.setLayoutParams(new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+            row.setOrientation(LinearLayout.HORIZONTAL);
+            int inRow = Math.min(cols, results.size() - idx);
+            for (int c = 0; c < cols && idx + c < results.size(); c++) {
+                PlayListItem item = results.get(idx + c);
+                View card = makeItemCard(item);
+                if (card instanceof ViewGroup) {
+                    View ch = ((ViewGroup) card).getChildAt(0);
+                    if (ch instanceof ImageView) {
+                        int posterH = Math.min(550, (int) (getResources().getDisplayMetrics().widthPixels / cols * 1.5));
+                        ch.setLayoutParams(new LinearLayout.LayoutParams(
+                                ViewGroup.LayoutParams.MATCH_PARENT, posterH));
+                    }
+                }
+                LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                        0, ViewGroup.LayoutParams.WRAP_CONTENT, 1);
+                lp.rightMargin = 6;
+                lp.leftMargin = 6;
+                card.setLayoutParams(lp);
+                row.addView(card);
+            }
+            for (int e = inRow; e < cols; e++) {
+                View spacer = new View(this);
+                spacer.setLayoutParams(new LinearLayout.LayoutParams(
+                        0, ViewGroup.LayoutParams.MATCH_PARENT, 1));
+                row.addView(spacer);
+            }
+            libraryContainer.addView(row);
+            libraryContainer.addView(makeSpacer(12));
+        }
+        new Handler(Looper.getMainLooper()).post(() -> loadImagesLazily(libraryContainer, 0));
+    }
+
+    private void showSearchEmpty() {
+        libraryContainer.removeAllViews();
+        TextView empty = new TextView(this);
+        empty.setLayoutParams(new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, 120));
+        empty.setGravity(Gravity.CENTER);
+        empty.setText("搜索无结果");
+        empty.setTextColor(0xFF808080);
+        empty.setTextSize(14);
+        libraryContainer.addView(empty);
+    }
+
+    private void clearSearch() {
+        if (isSearching) {
+            isSearching = false;
+            etSearch.setText("");
+            loadMediaLibraries();
+        }
+    }
 
     private void populateLibGrid(LinearLayout cont, List<MediaDbItem> libs) {
         cont.removeAllViews();
@@ -2153,6 +2406,11 @@ public class HomeActivity extends AppCompatActivity {
 
     public boolean onKeyDown(int keyCode, KeyEvent event) {
         if (keyCode == KeyEvent.KEYCODE_BACK || keyCode == KeyEvent.KEYCODE_ESCAPE) {
+            // 搜索模式 → 清除搜索
+            if (isSearching) {
+                clearSearch();
+                return true;
+            }
             // 媒体库浏览中 → 返回媒体库首页
             if (currentTab == 1 && savedBrowseGuid != null) {
                 savedBrowseGuid = null; savedBrowseList = null;
