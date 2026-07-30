@@ -19,10 +19,17 @@ public class SearchHelper {
     }
 
     public static void search(FnApiManager apiManager, String query, SearchCallback callback) {
+        final int[] retryCount = {1};
         apiManager.getApi().search(query).enqueue(new Callback<ApiResponse<List<PlayListItem>>>() {
             @Override
             public void onResponse(Call<ApiResponse<List<PlayListItem>>> call,
                                    Response<ApiResponse<List<PlayListItem>>> response) {
+                if (response.body() != null && response.body().code == -2 && retryCount[0] > 0) {
+                    retryCount[0]--;
+                    call.clone().enqueue(this);
+                    return;
+                }
+
                 if (response.isSuccessful() && response.body() != null && response.body().code == 0) {
                     if (response.body().data != null && !response.body().data.isEmpty()) {
                         callback.onResults(response.body().data);

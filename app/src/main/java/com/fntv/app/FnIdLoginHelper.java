@@ -368,6 +368,17 @@ public class FnIdLoginHelper {
                 if (response.isSuccessful() && response.body() != null && response.body().code == 0
                         && response.body().data != null && response.body().data.token != null) {
                     final String token = response.body().data.token;
+                    java.util.List<String> setCookies = response.headers().values("Set-Cookie");
+                    if (setCookies != null && !setCookies.isEmpty()) {
+                        StringBuilder sb = new StringBuilder();
+                        for (String sc : setCookies) {
+                            int semi = sc.indexOf(';');
+                            String nv = semi > 0 ? sc.substring(0, semi) : sc;
+                            if (sb.length() > 0) sb.append("; ");
+                            sb.append(nv);
+                        }
+                        FnApiManager.getInstance().setCookie(sb.toString());
+                    }
                     Log.d(TAG, "获取 token 成功");
                     handler.post(() -> {
                         dismissDialog();
@@ -576,6 +587,17 @@ public class FnIdLoginHelper {
                         if (response.isSuccessful() && response.body() != null && response.body().code == 0
                                 && response.body().data != null && response.body().data.token != null) {
                             final String token = response.body().data.token;
+                            java.util.List<String> setCookies = response.headers().values("Set-Cookie");
+                            if (setCookies != null && !setCookies.isEmpty()) {
+                                StringBuilder sb = new StringBuilder();
+                                for (String sc : setCookies) {
+                                    int semi = sc.indexOf(';');
+                                    String nv = semi > 0 ? sc.substring(0, semi) : sc;
+                                    if (sb.length() > 0) sb.append("; ");
+                                    sb.append(nv);
+                                }
+                                FnApiManager.getInstance().setCookie(sb.toString());
+                            }
                             Log.d(TAG, "API 登录成功！");
                             handler.post(() -> callback.onSuccess(token, nasBase));
                         } else {

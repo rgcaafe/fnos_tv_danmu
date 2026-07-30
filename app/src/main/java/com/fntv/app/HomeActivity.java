@@ -196,7 +196,10 @@ public class HomeActivity extends AppCompatActivity {
 
 
     private void switchTab(int index) {
+        int prevTab = currentTab;
         currentTab = index;
+        // 从媒体库切换到其他标签时清除搜索状态
+        if (prevTab == 1 && isSearching) clearSearch();
         // 切换标签时清除保存的页面状态，防止横竖屏切回时错误恢复
         savedBrowseList = null; savedBrowseGuid = null;
         panelMovies.setVisibility(index == 0 ? View.VISIBLE : View.GONE);
@@ -751,6 +754,7 @@ public class HomeActivity extends AppCompatActivity {
         showingEpisodes = false;
         savedBrowseGuid = ancestorGuid; savedBrowseTitle = title;
         browseFromLibrary = (container == libraryContainer);
+        if (browseFromLibrary) etSearch.setVisibility(View.GONE);
         if (container == moviesContainer) showingOverview = false;
 
         // 存储当前浏览上下文，排序变化时用于重新加载
@@ -1701,6 +1705,7 @@ public class HomeActivity extends AppCompatActivity {
 
     private void loadMediaLibraries() {
         isSearching = false;
+        etSearch.setVisibility(View.VISIBLE);
         clearContainer(libraryContainer, tvLibraryLoading, tvLibraryEmpty);
         tvLibraryLoading.setVisibility(View.VISIBLE);
 
@@ -1744,19 +1749,23 @@ public class HomeActivity extends AppCompatActivity {
     private void setupSearch() {
         etSearch.setOnEditorActionListener((v, actionId, event) -> {
             if (actionId == EditorInfo.IME_ACTION_SEARCH
+                    || actionId == EditorInfo.IME_ACTION_DONE
+                    || actionId == EditorInfo.IME_ACTION_GO
+                    || actionId == EditorInfo.IME_ACTION_UNSPECIFIED
                     || (event != null && event.getKeyCode() == KeyEvent.KEYCODE_ENTER)) {
-                performSearch(v.getText().toString().trim());
+                String q = v.getText().toString().trim();
+                performSearch(q);
+                hideKeyboard();
                 return true;
             }
             return false;
         });
-        etSearch.setOnKeyListener((v, keyCode, event) -> {
-            if (event.getAction() == KeyEvent.ACTION_DOWN && keyCode == KeyEvent.KEYCODE_ENTER) {
-                performSearch(((EditText) v).getText().toString().trim());
-                return true;
-            }
-            return false;
-        });
+    }
+
+    private void hideKeyboard() {
+        android.view.inputmethod.InputMethodManager imm =
+                (android.view.inputmethod.InputMethodManager) getSystemService(INPUT_METHOD_SERVICE);
+        if (imm != null) imm.hideSoftInputFromWindow(etSearch.getWindowToken(), 0);
     }
 
     private void performSearch(String query) {
@@ -1847,6 +1856,7 @@ public class HomeActivity extends AppCompatActivity {
         if (isSearching) {
             isSearching = false;
             etSearch.setText("");
+            etSearch.setVisibility(View.VISIBLE);
             loadMediaLibraries();
         }
     }
@@ -2253,6 +2263,11 @@ public class HomeActivity extends AppCompatActivity {
         int[] colors = {0xFFE53935, 0xFF1E88E5, 0xFF43A047, 0xFFFB8C00,
                         0xFF8E24AA, 0xFF00ACC1, 0xFF6D4C41, 0xFF546E7A};
         int colorIdx = item.guid != null ? Math.abs(item.guid.hashCode() % colors.length) : 0;
+        float r = 10 * getResources().getDisplayMetrics().density;
+        android.graphics.drawable.GradientDrawable badgeBg = new android.graphics.drawable.GradientDrawable();
+        badgeBg.setShape(android.graphics.drawable.GradientDrawable.RECTANGLE);
+        badgeBg.setCornerRadius(r);
+        badgeBg.setColor(colors[colorIdx]);
         TextView channelBadge = new TextView(this);
         channelBadge.setLayoutParams(new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, 280));
@@ -2262,7 +2277,7 @@ public class HomeActivity extends AppCompatActivity {
         int len = shortName.length();
         channelBadge.setTextSize(len <= 2 ? 56 : len <= 4 ? 40 : len <= 6 ? 30 : 22);
         channelBadge.setTypeface(Typeface.DEFAULT_BOLD);
-        channelBadge.setBackgroundColor(colors[colorIdx]);
+        channelBadge.setBackground(badgeBg);
         card.addView(channelBadge);
 
         // 底部文字条：类型 + 标题
@@ -2406,6 +2421,11 @@ public class HomeActivity extends AppCompatActivity {
 
     public boolean onKeyDown(int keyCode, KeyEvent event) {
         if (keyCode == KeyEvent.KEYCODE_BACK || keyCode == KeyEvent.KEYCODE_ESCAPE) {
+            // 搜索框有焦点 → 隐藏键盘并清除搜索
+            if (etSearch.isFocused()) {
+                hideKeyboard();
+                etSearch.clearFocus();
+            }
             // 搜索模式 → 清除搜索
             if (isSearching) {
                 clearSearch();

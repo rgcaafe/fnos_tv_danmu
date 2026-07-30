@@ -502,6 +502,19 @@ public class MainActivity extends AppCompatActivity {
                 if (response.isSuccessful() && response.body() != null) {
                     if (response.body().code == 0) {
                         FnApiManager.getInstance().setToken(response.body().data.token);
+                        // 从 Set-Cookie 中提取 fnos-token 等 cookie
+                        java.util.List<String> setCookies = response.headers().values("Set-Cookie");
+                        if (setCookies != null && !setCookies.isEmpty()) {
+                            StringBuilder sb = new StringBuilder();
+                            for (String sc : setCookies) {
+                                // Set-Cookie: name=value; Path=...; ...
+                                int semi = sc.indexOf(';');
+                                String nv = semi > 0 ? sc.substring(0, semi) : sc;
+                                if (sb.length() > 0) sb.append("; ");
+                                sb.append(nv);
+                            }
+                            FnApiManager.getInstance().setCookie(sb.toString());
+                        }
                         Log.i(TAG, "HTTP 登录成功！耗时 " + (System.currentTimeMillis() - loginStartTime) + "ms");
                         Toast.makeText(MainActivity.this, "登录成功！", Toast.LENGTH_SHORT).show();
                         startActivity(new Intent(MainActivity.this, HomeActivity.class));
