@@ -1,7 +1,7 @@
 {
-    "versionCode": 18,
-    "versionName": "1.1.8",
-    "apkUrl": "https://gitee.com/coffee710/fntv/releases/download/v1.1.8/FNTV_release_v1.1.8_20260713_2148.apk",
-    "changelog": "1.新增直播源显示\n2.新增HDR开关（实际毫无卵用）\n3.修复多季只能显示一季的问题\n4.新增画质切换功能",
+    "versionCode": 19,
+    "versionName": "1.1.9",
+    "apkUrl": "https://gitee.com/coffee710/fntv/releases/download/v1.1.9/FNTV_release_v1.1.9_20260802_2253.apk",
+    "changelog": "1.优化遥控器焦点问题\n2.媒体库新增搜索功能\n3.媒体库新增时间排序\n4.播放页ui点击隐藏",
     "forceUpdate": false
   }
