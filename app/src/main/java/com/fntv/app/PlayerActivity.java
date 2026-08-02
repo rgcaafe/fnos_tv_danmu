@@ -326,7 +326,7 @@ public class PlayerActivity extends AppCompatActivity {
                 playerView.requestFocus();
             }
         });
-        btnCloseInfo.setOnClickListener(v -> { infoPanel.setVisibility(View.GONE); infoVis = false; });
+        btnCloseInfo.setOnClickListener(v -> toggleInfo());
         btnBrightness = findViewById(R.id.btnBrightness);
         if (btnBrightness != null) {
             btnBrightness.setOnClickListener(v -> showBrightnessDialog());
@@ -1161,9 +1161,9 @@ public class PlayerActivity extends AppCompatActivity {
             // 关闭时恢复焦点导航
             ((ViewGroup) controller).setDescendantFocusability(ViewGroup.FOCUS_AFTER_DESCENDANTS);
             ((ViewGroup) topBar).setDescendantFocusability(ViewGroup.FOCUS_AFTER_DESCENDANTS);
-            // 确保控制栏可见，否则焦点无法设置到按钮上
+            // 确保控制栏可见，否则焦点无法设置到按钮上；焦点回到暂停按钮
             showCtrl(true);
-            btnInfo.requestFocus();
+            btnPlayPause.postDelayed(() -> btnPlayPause.requestFocus(), 50);
         }
     }
 

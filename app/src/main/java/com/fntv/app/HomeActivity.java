@@ -2231,16 +2231,16 @@ public class HomeActivity extends AppCompatActivity {
         row.setOrientation(LinearLayout.HORIZONTAL);
         row.setPadding(12, 8, 12, 8);
 
-        // 焦点链：卡片 ↑ 到查看全部按钮，↓ 到查看全部按钮
-        for (int i = 0; i < items.size(); i++) {
-            View card = makeLiveChannelCard(items.get(i));
-            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(220, 380);
-            lp.setMargins(10, 0, 10, 0);
-            card.setLayoutParams(lp);
-            card.setNextFocusUpId(viewAll.getId());
-            card.setNextFocusDownId(viewAll.getId());
-            row.addView(card);
-        }
+            // 焦点链：卡片 ↑ 到查看全部按钮，↓ 到底部菜单栏
+            for (int i = 0; i < items.size(); i++) {
+                View card = makeLiveChannelCard(items.get(i));
+                LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(220, 380);
+                lp.setMargins(10, 0, 10, 0);
+                card.setLayoutParams(lp);
+                card.setNextFocusUpId(viewAll.getId());
+                card.setNextFocusDownId(tabMovies.getId());
+                row.addView(card);
+            }
 
         hsv.addView(row);
         section.addView(hsv);
