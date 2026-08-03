@@ -100,7 +100,6 @@ public class FnApiManager {
     public void setToken(String token) { authInterceptor.setToken(token); }
     public String getToken() { return authInterceptor.getToken(); }
     public void setReferer(String referer) { authInterceptor.setReferer(referer); }
-    public void setCookie(String cookie) { authInterceptor.setCookie(cookie); }
     public FnApiService getApi() { return apiService; }
 
     /** 获取 OkHttpClient（API/图片） */
