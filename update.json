@@ -1,7 +1,7 @@
 {
-    "versionCode": 19,
-    "versionName": "1.1.9",
-    "apkUrl": "https://gitee.com/coffee710/fntv/releases/download/v1.1.9/FNTV_release_v1.1.9_20260802_2253.apk",
-    "changelog": "1.优化遥控器焦点问题\n2.媒体库新增搜索功能\n3.媒体库新增时间排序\n4.播放页ui点击隐藏",
+    "versionCode": 20,
+    "versionName": "1.2.0",
+    "apkUrl": "https://gitee.com/coffee710/fntv/releases/download/v1.2.0/FNTV_release_v1.2.0_20260803_1100.apk",
+    "changelog": "1.修复已知问题\n",
     "forceUpdate": false
   }
