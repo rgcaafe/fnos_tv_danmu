@@ -171,28 +171,26 @@
         <include layout="@layout/item_danmu_slider" android:id="@+id/dm_opacity" />
         <include layout="@layout/item_danmu_slider" android:id="@+id/dm_fontsize" />
 
-        <LinearLayout
+        <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center_vertical"
+            android:text="文字描边"
+            android:textColor="#EEE"
             android:paddingTop="8dp"
-            android:paddingBottom="8dp">
+            android:paddingBottom="4dp"
+            android:focusable="true"
+            android:nextFocusDown="@+id/dm_outline" />
 
-            <TextView
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="文字描边"
-                android:textColor="#EEE" />
-
-            <Switch
-                android:id="@+id/dm_outline"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:focusable="true" />
-
-        </LinearLayout>
+        <Switch
+            android:id="@+id/dm_outline"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="end"
+            android:focusable="true"
+            android:clickable="true"
+            android:nextFocusUp="@+id/dm_outline"
+            android:nextFocusDown="@+id/dm_density"
+            android:layout_marginBottom="8dp" />
 
         <include layout="@layout/item_danmu_slider" android:id="@+id/dm_density" />
         <include layout="@layout/item_danmu_slider" android:id="@+id/dm_maxactive" />
@@ -200,28 +198,26 @@
         <include layout="@layout/item_danmu_slider" android:id="@+id/dm_offset" />
         <include layout="@layout/item_danmu_slider" android:id="@+id/dm_maxcomments" />
 
-        <LinearLayout
+        <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center_vertical"
+            android:text="自定义刷新率"
+            android:textColor="#EEE"
             android:paddingTop="4dp"
-            android:paddingBottom="4dp">
+            android:paddingBottom="4dp"
+            android:focusable="true"
+            android:nextFocusDown="@+id/dm_custom_fps" />
 
-            <TextView
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="自定义刷新率"
-                android:textColor="#EEE" />
-
-            <Switch
-                android:id="@+id/dm_custom_fps"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:focusable="true" />
-
-        </LinearLayout>
+        <Switch
+            android:id="@+id/dm_custom_fps"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="end"
+            android:focusable="true"
+            android:clickable="true"
+            android:nextFocusUp="@+id/dm_custom_fps"
+            android:nextFocusDown="@+id/dm_fps"
+            android:layout_marginBottom="8dp" />
 
         <include layout="@layout/item_danmu_slider" android:id="@+id/dm_fps" />
 

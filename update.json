@@ -1,7 +1,7 @@
 {
-    "versionCode": 20,
-    "versionName": "1.2.0",
-    "apkUrl": "https://gitee.com/coffee710/fntv/releases/download/v1.2.0/FNTV_release_v1.2.0_20260803_1100.apk",
-    "changelog": "1.修复已知问题\n",
+    "versionCode": 21,
+    "versionName": "1.2.1",
+    "apkUrl": "https://gitee.com/coffee710/fntv/releases/download/v1.2.1/FNTV_release_v1.2.1_20260901_1403.apk",
+    "changelog": "1.优化弹幕偏移设置\n2.新增弹幕列表\n3.点击弹幕显示时间\n4.新增自定义弹幕刷新率\n",
     "forceUpdate": false
   }
