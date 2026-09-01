@@ -305,7 +305,8 @@ public class MainActivity extends AppCompatActivity {
         cbWrap.setNextFocusDownId(R.id.btnLogin);
         cbWrap.setPadding((int)(12 * density), 0, (int)(12 * density), 0);
 
-        CheckBox cb = new CheckBox(this);
+        // AppCompatCheckBox：支持 API 19 上的 buttonTint 兼容着色
+        CheckBox cb = new androidx.appcompat.widget.AppCompatCheckBox(this);
         RelativeLayout.LayoutParams cbLp = new RelativeLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         cbLp.addRule(RelativeLayout.CENTER_VERTICAL);
@@ -315,14 +316,9 @@ public class MainActivity extends AppCompatActivity {
         cb.setTextColor(0xFFEEEEEE);
         cb.setTextSize(14);
         cb.setId(View.generateViewId());
-        try {
-            android.graphics.drawable.Drawable d = cb.getButtonDrawable();
-            if (d != null) {
-                d = androidx.core.graphics.drawable.DrawableCompat.wrap(d);
-                androidx.core.graphics.drawable.DrawableCompat.setTint(d.mutate(), 0xFF3370FF);
-                cb.setButtonDrawable(d);
-            }
-        } catch (Exception ignored) {}
+        // 兼容旧版本的勾选图标染蓝（替代 API 22 的 getButtonDrawable + setTint）
+        androidx.core.widget.CompoundButtonCompat.setButtonTintList(
+                cb, android.content.res.ColorStateList.valueOf(0xFF3370FF));
         cbWrap.addView(cb);
         cbWrap.setOnClickListener(new View.OnClickListener() {
             @Override
