@@ -396,6 +396,7 @@ public class DanmuManager {
                 danmuView.setCustomFps(swCustomFps.isChecked());
                 danmuView.setTargetFps(ft);
                 danmuView.setDanmuOffset(of);
+                danmuView.stop();
                 danmuView.start();
                 if (danmuItemsOriginal != null) {
                     // 从原始数据重新应用时间缩放和偏移
