@@ -36,8 +36,11 @@ public class DanmuView extends View {
     private boolean showScroll = true;
     private boolean showTop = true;
     private boolean showBottom = true;
+    private int danmuOffset = 0;
     private final List<DanmuItem> activeScroll = new ArrayList<>();
     private final List<DanmuItem> activeStatic = new ArrayList<>();
+    private DanmuItem pausedItem = null;
+    private long pausedTime = 0;
 
     // 帧调度双模式兜底
     private final Handler frameHandler = new Handler(Looper.getMainLooper());
@@ -66,6 +69,53 @@ public class DanmuView extends View {
     public void setShowScroll(boolean v) { showScroll = v; }
     public void setShowTop(boolean v) { showTop = v; }
     public void setShowBottom(boolean v) { showBottom = v; }
+    private int targetFps = 60;
+    public void setTargetFps(int v) { targetFps = Math.max(1, v); }
+    private boolean customFps = false;
+    public void setCustomFps(boolean v) { customFps = v; }
+    public void setDanmuOffset(int v) { danmuOffset = v; }
+
+    @Override
+    public boolean onTouchEvent(android.view.MotionEvent event) {
+        if (event.getAction() == android.view.MotionEvent.ACTION_DOWN) {
+            float tx = event.getX();
+            float ty = event.getY();
+
+            // 点击空白处恢复暂停的弹幕
+            if (pausedItem != null) {
+                pausedItem.paused = false;
+                pausedItem = null;
+                invalidate();
+                return true;
+            }
+
+            // 检测点击了哪条弹幕（滚动弹幕）
+            for (DanmuItem a : activeScroll) {
+                float textH = fontSize * screenDensity;
+                if (tx >= a.x && tx <= a.x + a.tw && ty >= a.y - textH && ty <= a.y) {
+                    a.paused = true;
+                    pausedItem = a;
+                    pausedTime = System.currentTimeMillis();
+                    invalidate();
+                    return true;
+                }
+            }
+
+            // 检测点击了哪条弹幕（固定弹幕）
+            for (DanmuItem a : activeStatic) {
+                float textH = fontSize * screenDensity;
+                if (tx >= a.x && tx <= a.x + a.tw && ty >= a.y - textH && ty <= a.y) {
+                    a.paused = true;
+                    pausedItem = a;
+                    pausedTime = System.currentTimeMillis();
+                    invalidate();
+                    return true;
+                }
+            }
+        }
+        // 不拦截触摸事件，让下层控件处理
+        return false;
+    }
 
     private void updateStyle() {
         paint.setTextSize(fontSize * screenDensity);
@@ -98,10 +148,15 @@ public class DanmuView extends View {
     public void start() {
         if (running) return;
         running = true;
-        useHandlerFallback = false;
         lastFrame = System.nanoTime();
-        Choreographer.getInstance().postFrameCallback(frameCallback);
-        frameHandler.postDelayed(refreshCheck, 2000);
+        if (customFps) {
+            useHandlerFallback = true;
+            frameHandler.post(handlerFrame);
+        } else {
+            useHandlerFallback = false;
+            Choreographer.getInstance().postFrameCallback(frameCallback);
+            frameHandler.postDelayed(refreshCheck, 2000);
+        }
     }
 
     public void stop() {
@@ -135,10 +190,15 @@ public class DanmuView extends View {
     public void resume() {
         if (items.isEmpty()) return;
         running = true;
-        useHandlerFallback = false;
         lastFrame = System.nanoTime();
-        Choreographer.getInstance().postFrameCallback(frameCallback);
-        frameHandler.postDelayed(refreshCheck, 2000);
+        if (customFps) {
+            useHandlerFallback = true;
+            frameHandler.post(handlerFrame);
+        } else {
+            useHandlerFallback = false;
+            Choreographer.getInstance().postFrameCallback(frameCallback);
+            frameHandler.postDelayed(refreshCheck, 2000);
+        }
     }
 
     public void clear() {
@@ -156,6 +216,7 @@ public class DanmuView extends View {
         float fontSize;
         float x, y, speed, tw;
         float ttl;
+        boolean paused;
     }
 
     public static class DanmuComment {
@@ -184,7 +245,7 @@ public class DanmuView extends View {
         public void run() {
             if (!running || !useHandlerFallback) return;
             tick();
-            frameHandler.postDelayed(this, 1000 / 60);  // 固定 60fps
+            frameHandler.postDelayed(this, 1000 / targetFps);  // 自定义刷新率
         }
     };
 
@@ -193,11 +254,12 @@ public class DanmuView extends View {
         @Override
         public void run() {
             if (!running) return;
+            if (customFps) return;  // 自定义刷新率时不自动切换
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                 try {
                     float rate = getDisplay().getRefreshRate();
                     if (rate < 48f && !useHandlerFallback) {
-                        // 屏幕降频了，切到 Handler 模式以 60fps 跑弹幕
+                        // 屏幕降频了，切到 Handler 模式以自定义fps跑弹幕
                         useHandlerFallback = true;
                         Choreographer.getInstance().removeFrameCallback(frameCallback);
                         lastFrame = System.nanoTime();
@@ -255,6 +317,7 @@ public class DanmuView extends View {
                 a.text = src.text;
                 a.color = src.color;
                 a.type = src.type;
+                a.time = src.time;
                 a.tw = paint.measureText(src.text);
                 a.speed = 0;
                 a.ttl = 5.0f;  // 显示 5 秒
@@ -282,6 +345,7 @@ public class DanmuView extends View {
                 a.text = src.text;
                 a.color = src.color;
                 a.type = src.type;
+                a.time = src.time;
                 a.tw = paint.measureText(src.text);
 
                 // 速度基本匀速，长度影响很小
@@ -302,7 +366,9 @@ public class DanmuView extends View {
         // ── 更新滚动弹幕位置 ──
         List<DanmuItem> deadScroll = new ArrayList<>();
         for (DanmuItem a : activeScroll) {
-            a.x -= a.speed * dt;
+            if (!a.paused) {
+                a.x -= a.speed * dt;
+            }
             if (a.x + a.tw < -100) deadScroll.add(a);
         }
         activeScroll.removeAll(deadScroll);
@@ -405,12 +471,59 @@ public class DanmuView extends View {
 
         // 底层：滚动弹幕
         for (DanmuItem a : activeScroll) {
-            drawDanmu(c, a, 1f);
+            drawDanmu(c, a, a.paused ? 0.6f : 1f);
         }
 
         // 顶层：固定弹幕
         for (DanmuItem a : activeStatic) {
-            drawDanmu(c, a, 1f);
+            drawDanmu(c, a, a.paused ? 0.6f : 1f);
+        }
+
+        // 绘制暂停弹幕的信息浮层
+        if (pausedItem != null) {
+            int sec = (int) pausedItem.time;
+            int min = sec / 60;
+            sec = sec % 60;
+            String timeStr = String.format("%d:%02d", min, sec);
+
+            String info;
+            if (danmuOffset != 0) {
+                // 显示原始时间和偏移后时间
+                float origTime = pausedItem.time - danmuOffset;
+                int origSec = (int) origTime;
+                int origMin = origSec / 60;
+                origSec = origSec % 60;
+                String origTimeStr = String.format("%d:%02d", origMin, origSec);
+                info = "原始: " + origTimeStr + "  偏移后: " + timeStr;
+                info += "  (" + (danmuOffset > 0 ? "+" : "") + danmuOffset + "s)";
+            } else {
+                info = "时间: " + timeStr;
+            }
+            String typeStr = "";
+            if (pausedItem.type == 5) typeStr = "顶部";
+            else if (pausedItem.type == 4) typeStr = "底部";
+            else typeStr = "滚动";
+            info += "  [" + typeStr + "]";
+
+            float textH = fontSize * screenDensity;
+            float bgW = paint.measureText(info) + 24 * screenDensity;
+            float bgH = textH + 16 * screenDensity;
+            float bgX = pausedItem.x;
+            float bgY = pausedItem.y - textH - 20 * screenDensity;
+            if (bgX + bgW > getWidth()) bgX = getWidth() - bgW;
+            if (bgX < 0) bgX = 0;
+            if (bgY < 0) bgY = pausedItem.y + 8 * screenDensity;
+
+            // 背景
+            Paint bgPaint = new Paint();
+            bgPaint.setColor(0xDD000000);
+            c.drawRoundRect(bgX, bgY, bgX + bgW, bgY + bgH, 6 * screenDensity, 6 * screenDensity, bgPaint);
+
+            // 文字
+            Paint infoPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+            infoPaint.setTextSize(14 * screenDensity);
+            infoPaint.setColor(0xFFCCCCCC);
+            c.drawText(info, bgX + 12 * screenDensity, bgY + textH + 2 * screenDensity, infoPaint);
         }
     }
 }

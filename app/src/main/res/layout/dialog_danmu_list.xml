@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <TextView
+        android:id="@+id/dm_list_title"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="弹幕列表"
+        android:textColor="#FFF"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        android:paddingBottom="12dp" />
+
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
+
+        <ListView
+            android:id="@+id/dm_list_view"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:divider="#444444"
+            android:dividerHeight="1dp"
+            android:focusable="true"
+            android:focusableInTouchMode="true"
+            android:scrollbars="none"
+            android:scrollingCache="false"
+            android:animationCache="false"
+            android:paddingRight="16dp" />
+
+        <View
+            android:id="@+id/dm_scrollbar_bg"
+            android:layout_width="8dp"
+            android:layout_height="match_parent"
+            android:layout_gravity="end"
+            android:background="#222222" />
+
+        <View
+            android:id="@+id/dm_scrollbar_thumb"
+            android:layout_width="8dp"
+            android:layout_height="60dp"
+            android:layout_gravity="end|top"
+            android:background="@drawable/scrollbar_thumb"
+            android:focusable="true" />
+
+    </FrameLayout>
+
+    <Button
+        android:id="@+id/dm_list_close"
+        android:layout_width="match_parent"
+        android:layout_height="40dp"
+        android:layout_marginTop="12dp"
+        android:background="@drawable/bg_chip"
+        android:text="关闭"
+        android:textColor="#999"
+        android:focusable="true" />
+
+</LinearLayout>

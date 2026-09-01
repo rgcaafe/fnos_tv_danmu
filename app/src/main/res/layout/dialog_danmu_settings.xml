@@ -35,7 +35,8 @@
             <Switch
                 android:id="@+id/dm_sw"
                 android:layout_width="wrap_content"
-                android:layout_height="wrap_content" />
+                android:layout_height="wrap_content"
+                android:focusable="true" />
 
         </LinearLayout>
 
@@ -58,7 +59,8 @@
             <Switch
                 android:id="@+id/dm_show_scroll"
                 android:layout_width="wrap_content"
-                android:layout_height="wrap_content" />
+                android:layout_height="wrap_content"
+                android:focusable="true" />
 
         </LinearLayout>
 
@@ -80,7 +82,8 @@
             <Switch
                 android:id="@+id/dm_show_top"
                 android:layout_width="wrap_content"
-                android:layout_height="wrap_content" />
+                android:layout_height="wrap_content"
+                android:focusable="true" />
 
         </LinearLayout>
 
@@ -102,7 +105,31 @@
             <Switch
                 android:id="@+id/dm_show_bottom"
                 android:layout_width="wrap_content"
-                android:layout_height="wrap_content" />
+                android:layout_height="wrap_content"
+                android:focusable="true" />
+
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingTop="4dp"
+            android:paddingBottom="4dp">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="时间比例缩放"
+                android:textColor="#EEE" />
+
+            <Switch
+                android:id="@+id/dm_time_scale"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:focusable="true" />
 
         </LinearLayout>
 
@@ -121,6 +148,16 @@
             android:text="手动匹配弹幕"
             android:textColor="#FFF"
             android:focusable="true" />
+
+        <Button
+            android:id="@+id/dm_listBtn"
+            android:layout_width="match_parent"
+            android:layout_height="40dp"
+            android:background="@drawable/bg_chip"
+            android:text="弹幕列表"
+            android:textColor="#FFF"
+            android:focusable="true"
+            android:layout_marginTop="8dp" />
 
         <View
             android:layout_width="match_parent"
@@ -152,7 +189,8 @@
             <Switch
                 android:id="@+id/dm_outline"
                 android:layout_width="wrap_content"
-                android:layout_height="wrap_content" />
+                android:layout_height="wrap_content"
+                android:focusable="true" />
 
         </LinearLayout>
 
@@ -161,6 +199,31 @@
         <include layout="@layout/item_danmu_slider" android:id="@+id/dm_rowspacing" />
         <include layout="@layout/item_danmu_slider" android:id="@+id/dm_offset" />
         <include layout="@layout/item_danmu_slider" android:id="@+id/dm_maxcomments" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingTop="4dp"
+            android:paddingBottom="4dp">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="自定义刷新率"
+                android:textColor="#EEE" />
+
+            <Switch
+                android:id="@+id/dm_custom_fps"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:focusable="true" />
+
+        </LinearLayout>
+
+        <include layout="@layout/item_danmu_slider" android:id="@+id/dm_fps" />
 
         <LinearLayout
             android:layout_width="match_parent"

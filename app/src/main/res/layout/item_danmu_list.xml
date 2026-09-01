@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:padding="12dp"
+    android:gravity="center_vertical"
+    android:focusable="true"
+    android:focusableInTouchMode="true"
+    android:nextFocusUp="@id/dm_list_view"
+    android:nextFocusDown="@id/dm_list_view"
+    android:background="?android:attr/selectableItemBackground">
+
+    <TextView
+        android:id="@+id/dm_time"
+        android:layout_width="60dp"
+        android:layout_height="wrap_content"
+        android:textColor="#AAA"
+        android:textSize="13sp"
+        android:singleLine="true" />
+
+    <TextView
+        android:id="@+id/dm_type"
+        android:layout_width="50dp"
+        android:layout_height="wrap_content"
+        android:textColor="#888"
+        android:textSize="12sp"
+        android:singleLine="true" />
+
+    <TextView
+        android:id="@+id/dm_text"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:textColor="#EEE"
+        android:textSize="13sp"
+        android:maxLines="2"
+        android:ellipsize="end" />
+
+</LinearLayout>

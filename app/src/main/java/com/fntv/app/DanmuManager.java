@@ -10,6 +10,8 @@ import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
+import android.widget.ListView;
+import android.widget.BaseAdapter;
 import android.widget.SeekBar;
 import android.widget.Switch;
 import android.widget.TextView;
@@ -52,6 +54,7 @@ public class DanmuManager {
     // 弹幕状态
     private boolean danmuOn = false;
     private List<DanmuView.DanmuComment> danmuItems;
+    private List<DanmuView.DanmuComment> danmuItemsOriginal;
     private String pendingDanmuTitle;
     private String pendingDanmuGuid;
     private String danmuMatchedName = "";
@@ -115,6 +118,9 @@ public class DanmuManager {
             danmuView.setMaxActive(prefs.getInt("danmu_maxactive", 40));
             danmuView.setDensityPct(prefs.getInt("danmu_density", 100));
             danmuView.setRowSpacing(prefs.getFloat("danmu_rowspacing", 1.8f));
+            danmuView.setTargetFps(prefs.getInt("danmu_fps", 60));
+            danmuView.setCustomFps(prefs.getBoolean("danmu_custom_fps", false));
+            danmuView.setDanmuOffset(prefs.getInt("danmu_offset", 0));
         } else {
             danmuView.setVisibility(View.GONE);
             btnDanmu.setText("弹");
@@ -294,10 +300,13 @@ public class DanmuManager {
         final int[] offset = {p.getInt("danmu_offset", 0)};
         final int[] maxComments = {p.getInt("danmu_maxcomments", 50000)};
         final float[] rowSpacing = {p.getFloat("danmu_rowspacing", 1.8f)};
+        final int[] fps = {p.getInt("danmu_fps", 60)};
 
         final android.app.Dialog dialog = new android.app.Dialog(activity, android.R.style.Theme_DeviceDefault_Dialog_NoActionBar);
         dialog.setContentView(R.layout.dialog_danmu_settings);
         dialog.getWindow().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(0xDD1A1A1A));
+        int screenH = activity.getResources().getDisplayMetrics().heightPixels;
+        dialog.getWindow().setLayout(ViewGroup.LayoutParams.MATCH_PARENT, (int) (screenH * 0.9f));
 
         final Switch sw = dialog.findViewById(R.id.dm_sw);
         sw.setChecked(isOn[0]);
@@ -309,10 +318,22 @@ public class DanmuManager {
         swTop.setChecked(p.getBoolean("danmu_top", true));
         swBottom.setChecked(p.getBoolean("danmu_bottom", true));
 
+        final Switch swCustomFps = dialog.findViewById(R.id.dm_custom_fps);
+        swCustomFps.setChecked(p.getBoolean("danmu_custom_fps", false));
+
+        final Switch swTimeScale = dialog.findViewById(R.id.dm_time_scale);
+        swTimeScale.setChecked(p.getBoolean("danmu_time_scale", false));
+
         final Button matchBtn = dialog.findViewById(R.id.dm_matchBtn);
         matchBtn.setOnClickListener(v -> {
             dialog.dismiss();
             showDanmuSearch();
+        });
+
+        final Button listBtn = dialog.findViewById(R.id.dm_listBtn);
+        listBtn.setOnClickListener(v -> {
+            dialog.dismiss();
+            showDanmuList();
         });
 
         int opVal = Math.min(100, Math.max(0, (int) (opacity[0] * 100)));
@@ -323,8 +344,9 @@ public class DanmuManager {
         setupSlider(dialog, R.id.dm_speed, "速度", (int) (speed[0] * 100), 30, 300, "x");
         setupSlider(dialog, R.id.dm_density, "密度", density[0], 50, 100, "%");
         setupSlider(dialog, R.id.dm_maxactive, "同屏最大", maxActive[0], 10, 80, "");
-        setupSlider(dialog, R.id.dm_offset, "时间偏移", offset[0] + 30, 0, 60, "s");
+        setupSlider(dialog, R.id.dm_offset, "时间偏移", offset[0] + 120, 0, 240, "s");
         setupSlider(dialog, R.id.dm_maxcomments, "加载上限", maxComments[0], 100, 50000, "");
+        setupSlider(dialog, R.id.dm_fps, "刷新率", fps[0], 30, 144, "fps");
 
         final Switch olSw = dialog.findViewById(R.id.dm_outline);
         olSw.setChecked(outline[0]);
@@ -340,18 +362,21 @@ public class DanmuManager {
             float rs = readSlider(dialog, R.id.dm_rowspacing, 120) / 100f;
             int dn = readSlider(dialog, R.id.dm_density, 50);
             int mx = readSlider(dialog, R.id.dm_maxactive, 10);
-            int of = readSlider(dialog, R.id.dm_offset, 0) - 30;
+            int of = readSlider(dialog, R.id.dm_offset, 0) - 120;
             int mc = readSlider(dialog, R.id.dm_maxcomments, 100);
+            int ft = readSlider(dialog, R.id.dm_fps, 30);
 
             p.edit().putBoolean("danmu_on", isOn[0]).putInt("danmu_area", a)
                     .putFloat("danmu_speed", sp).putFloat("danmu_opacity", op)
                     .putFloat("danmu_fontsize", fs).putBoolean("danmu_outline", outline[0])
                     .putInt("danmu_density", dn).putInt("danmu_maxactive", mx)
                     .putInt("danmu_offset", of).putInt("danmu_maxcomments", mc)
-                    .putFloat("danmu_rowspacing", rs)
+                    .putFloat("danmu_rowspacing", rs).putInt("danmu_fps", ft)
                     .putBoolean("danmu_scroll", swScroll.isChecked())
                     .putBoolean("danmu_top", swTop.isChecked())
-                    .putBoolean("danmu_bottom", swBottom.isChecked()).apply();
+                    .putBoolean("danmu_bottom", swBottom.isChecked())
+                    .putBoolean("danmu_custom_fps", swCustomFps.isChecked())
+                    .putBoolean("danmu_time_scale", swTimeScale.isChecked()).apply();
             danmuView.setShowScroll(swScroll.isChecked());
             danmuView.setShowTop(swTop.isChecked());
             danmuView.setShowBottom(swBottom.isChecked());
@@ -368,8 +393,41 @@ public class DanmuManager {
                 danmuView.setMaxActive(mx);
                 danmuView.setDensityPct(dn);
                 danmuView.setRowSpacing(rs);
+                danmuView.setCustomFps(swCustomFps.isChecked());
+                danmuView.setTargetFps(ft);
+                danmuView.setDanmuOffset(of);
                 danmuView.start();
-                if (danmuItems != null) danmuView.loadDanmu(danmuItems);
+                if (danmuItemsOriginal != null) {
+                    // 从原始数据重新应用时间缩放和偏移
+                    danmuItems = new java.util.ArrayList<>(danmuItemsOriginal);
+                    boolean timeScale = prefs.getBoolean("danmu_time_scale", false);
+                    if (timeScale) {
+                        long videoDur = 0;
+                        Player player = data.getPlayer();
+                        if (player != null && player.getDuration() > 0)
+                            videoDur = player.getDuration() / 1000;
+                        else if (data.getItemDuration() > 0)
+                            videoDur = data.getItemDuration();
+                        if (videoDur > 0 && !danmuItems.isEmpty()) {
+                            float maxDanmuTime = danmuItems.get(danmuItems.size() - 1).time;
+                            if (maxDanmuTime > 0) {
+                                float ratio = (float) videoDur / maxDanmuTime;
+                                for (DanmuView.DanmuComment dc : danmuItems) {
+                                    dc.time *= ratio;
+                                }
+                            }
+                        }
+                    }
+                    int offsetSec = prefs.getInt("danmu_offset", 0);
+                    if (offsetSec != 0) {
+                        for (DanmuView.DanmuComment dc : danmuItems) {
+                            dc.time += offsetSec;
+                        }
+                    }
+                    danmuView.loadDanmu(danmuItems);
+                } else if (danmuItems != null) {
+                    danmuView.loadDanmu(danmuItems);
+                }
                 // 从关闭→打开时，触发一次匹配
                 if (wasOff && pendingDanmuTitle != null) loadDanmu(pendingDanmuTitle, pendingDanmuGuid);
             } else {
@@ -393,7 +451,8 @@ public class DanmuManager {
             String display = String.valueOf(val);
             if (unit.equals("x")) display = String.format("%.1f", val / 100f);
             else if (unit.equals("%")) display = val + "%";
-            else if (unit.equals("s")) display = (val - 30) + "s";
+            else if (unit.equals("s")) display = (val - 120) + "s";
+            else if (unit.equals("fps")) display = val + "fps";
             tv.setText(label + "  " + display);
         }
         if (sb != null) {
@@ -406,7 +465,8 @@ public class DanmuManager {
                     String suffix;
                     if (unit.equals("x")) suffix = String.format("%.1f", real / 100f);
                     else if (unit.equals("%")) suffix = real + "%";
-                    else if (unit.equals("s")) suffix = (real - 30) + "s";
+                    else if (unit.equals("s")) suffix = (real - 120) + "s";
+                    else if (unit.equals("fps")) suffix = real + "fps";
                     else suffix = String.valueOf(real);
                     if (tv != null) tv.setText(label + "  " + suffix);
                 }
@@ -418,6 +478,20 @@ public class DanmuManager {
                 @Override
                 public void onStopTrackingTouch(SeekBar s) {
                 }
+            });
+            // 遥控器左右键步进1
+            sb.setOnKeyListener((v2, keyCode, event) -> {
+                if (event.getAction() == android.view.KeyEvent.ACTION_DOWN) {
+                    int cur = sb.getProgress();
+                    int newMax = max - min;
+                    if (keyCode == android.view.KeyEvent.KEYCODE_DPAD_LEFT || keyCode == android.view.KeyEvent.KEYCODE_DPAD_RIGHT) {
+                        int step = (keyCode == android.view.KeyEvent.KEYCODE_DPAD_LEFT) ? -1 : 1;
+                        int next = Math.max(0, Math.min(newMax, cur + step));
+                        if (next != cur) sb.setProgress(next);
+                        return true;
+                    }
+                }
+                return false;
             });
         }
     }
@@ -558,6 +632,154 @@ public class DanmuManager {
                 }
             }).start();
         });
+    }
+
+    private void showDanmuList() {
+        final android.app.Dialog dialog = new android.app.Dialog(activity, android.R.style.Theme_DeviceDefault_Dialog_NoActionBar);
+        dialog.setContentView(R.layout.dialog_danmu_list);
+        dialog.getWindow().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(0xDD1A1A1A));
+        int screenH = activity.getResources().getDisplayMetrics().heightPixels;
+        int dialogH = (int) (screenH * 0.9f);
+        dialog.getWindow().setLayout(ViewGroup.LayoutParams.MATCH_PARENT, dialogH);
+
+        TextView titleView = dialog.findViewById(R.id.dm_list_title);
+        ListView listView = dialog.findViewById(R.id.dm_list_view);
+        Button closeBtn = dialog.findViewById(R.id.dm_list_close);
+        View scrollbarBg = dialog.findViewById(R.id.dm_scrollbar_bg);
+        View scrollbarThumb = dialog.findViewById(R.id.dm_scrollbar_thumb);
+
+        if (danmuItems == null || danmuItems.isEmpty()) {
+            titleView.setText("弹幕列表 (0条)");
+            listView.setAdapter(null);
+            if (scrollbarBg != null) scrollbarBg.setVisibility(View.GONE);
+            if (scrollbarThumb != null) scrollbarThumb.setVisibility(View.GONE);
+        } else {
+            titleView.setText("弹幕列表 (" + danmuItems.size() + "条)");
+            final int count = danmuItems.size();
+            final String[] times = new String[count];
+            final String[] types = new String[count];
+            final String[] texts = new String[count];
+            for (int i = 0; i < count; i++) {
+                DanmuView.DanmuComment c = danmuItems.get(i);
+                int sec = (int) c.time;
+                int min = sec / 60;
+                sec = sec % 60;
+                times[i] = String.format("%d:%02d", min, sec);
+                if (c.type == 5) types[i] = "顶部";
+                else if (c.type == 4) types[i] = "底部";
+                else types[i] = "滚动";
+                texts[i] = c.text;
+            }
+            BaseAdapter adapter = new BaseAdapter() {
+                @Override public int getCount() { return count; }
+                @Override public Object getItem(int pos) { return texts[pos]; }
+                @Override public long getItemId(int pos) { return pos; }
+                @Override
+                public View getView(int pos, View cv, ViewGroup parent) {
+                    if (cv == null) cv = android.view.LayoutInflater.from(activity).inflate(R.layout.item_danmu_list, parent, false);
+                    ((TextView) cv.findViewById(R.id.dm_time)).setText(times[pos]);
+                    ((TextView) cv.findViewById(R.id.dm_type)).setText(types[pos]);
+                    ((TextView) cv.findViewById(R.id.dm_text)).setText(texts[pos]);
+                    return cv;
+                }
+            };
+            listView.setAdapter(adapter);
+
+            // ── 可拖拽滚动条 ──
+            if (scrollbarThumb != null && scrollbarBg != null) {
+                final boolean[] dragging = {false};
+                final float[] dragStartY = {0};
+                final int[] scrollStartPos = {0};
+
+                Runnable updateThumb = () -> {
+                    int listH = listView.getHeight();
+                    int totalH = listView.getCount() * (listView.getChildCount() > 0 ? listView.getChildAt(0).getHeight() : 60);
+                    if (totalH <= listH) {
+                        scrollbarThumb.setVisibility(View.GONE);
+                        return;
+                    }
+                    scrollbarThumb.setVisibility(View.VISIBLE);
+                    int thumbH = scrollbarThumb.getHeight();
+                    int bgH = scrollbarBg.getHeight();
+                    int firstPos = listView.getFirstVisiblePosition();
+                    int lastPos = listView.getLastVisiblePosition();
+                    int visibleCount = lastPos - firstPos + 1;
+                    float ratio = (float) firstPos / Math.max(1, count - visibleCount);
+                    int thumbTop = (int) (ratio * (bgH - thumbH));
+                    android.widget.FrameLayout.LayoutParams lp = (android.widget.FrameLayout.LayoutParams) scrollbarThumb.getLayoutParams();
+                    lp.topMargin = thumbTop;
+                    scrollbarThumb.setLayoutParams(lp);
+                };
+
+                listView.setOnScrollListener(new android.widget.AbsListView.OnScrollListener() {
+                    @Override public void onScrollStateChanged(android.widget.AbsListView v, int scrollState) {}
+                    @Override public void onScroll(android.widget.AbsListView v, int firstVisibleItem, int visibleItemCount, int totalItemCount) {
+                        updateThumb.run();
+                    }
+                });
+                listView.post(updateThumb);
+
+                scrollbarThumb.setOnTouchListener((v, event) -> {
+                    int bgH = scrollbarBg.getHeight();
+                    int thumbH = scrollbarThumb.getHeight();
+                    switch (event.getAction()) {
+                        case android.view.MotionEvent.ACTION_DOWN:
+                            dragging[0] = true;
+                            dragStartY[0] = event.getRawY();
+                            scrollStartPos[0] = listView.getFirstVisiblePosition();
+                            return true;
+                        case android.view.MotionEvent.ACTION_MOVE:
+                            if (dragging[0]) {
+                                float dy = event.getRawY() - dragStartY[0];
+                                int maxScroll = count - Math.max(1, listView.getHeight() / (listView.getChildCount() > 0 ? listView.getChildAt(0).getHeight() : 60));
+                                float ratio = dy / Math.max(1, bgH - thumbH);
+                                int newPos = scrollStartPos[0] + (int) (ratio * maxScroll);
+                                newPos = Math.max(0, Math.min(count - 1, newPos));
+                                listView.setSelection(newPos);
+                                return true;
+                            }
+                            break;
+                        case android.view.MotionEvent.ACTION_UP:
+                        case android.view.MotionEvent.ACTION_CANCEL:
+                            dragging[0] = false;
+                            return true;
+                    }
+                    return false;
+                });
+            }
+
+            // ── 遥控器按键滚动 ──
+            listView.setOnKeyListener((v, keyCode, event) -> {
+                if (event.getAction() == android.view.KeyEvent.ACTION_DOWN) {
+                    int itemH = listView.getChildAt(0) != null ? listView.getChildAt(0).getHeight() : 60;
+                    int pageItems = Math.max(1, listView.getHeight() / itemH);
+                    switch (keyCode) {
+                        case android.view.KeyEvent.KEYCODE_DPAD_UP:
+                            listView.smoothScrollBy(-itemH * 2, 150);
+                            return true;
+                        case android.view.KeyEvent.KEYCODE_DPAD_DOWN:
+                            listView.smoothScrollBy(itemH * 2, 150);
+                            return true;
+                        case android.view.KeyEvent.KEYCODE_PAGE_UP:
+                        case android.view.KeyEvent.KEYCODE_MEDIA_REWIND:
+                            listView.smoothScrollBy(-itemH * pageItems, 200);
+                            return true;
+                        case android.view.KeyEvent.KEYCODE_PAGE_DOWN:
+                        case android.view.KeyEvent.KEYCODE_MEDIA_FAST_FORWARD:
+                            listView.smoothScrollBy(itemH * pageItems, 200);
+                            return true;
+                        case android.view.KeyEvent.KEYCODE_MENU:
+                        case android.view.KeyEvent.KEYCODE_BUTTON_SELECT:
+                            listView.smoothScrollToPosition(0);
+                            return true;
+                    }
+                }
+                return false;
+            });
+        }
+
+        closeBtn.setOnClickListener(v -> dialog.dismiss());
+        dialog.show();
     }
 
     // ========== 弹幕加载 ==========
@@ -770,33 +992,46 @@ public class DanmuManager {
 
                 final int loaded = list.size();
                 activity.runOnUiThread(() -> {
+                    danmuItemsOriginal = new java.util.ArrayList<>(list);
                     danmuItems = list;
-                    // 弹幕时间戳压缩匹配视频时长
-                    long videoDur = 0;
-                    Player p = data.getPlayer();
-                    if (p != null && p.getDuration() > 0)
-                        videoDur = p.getDuration() / 1000;
-                    else if (data.getItemDuration() > 0)
-                        videoDur = data.getItemDuration();
-                    if (videoDur > 0 && !list.isEmpty()) {
-                        float maxDanmuTime = list.get(list.size() - 1).time;
-                        if (maxDanmuTime > 0) {
-                            float ratio = (float) videoDur / maxDanmuTime;
-                            for (DanmuView.DanmuComment dc2 : list) {
-                                dc2.time *= ratio;
-                            }
-                            Log.d(TAG, "[弹幕] 时间匹配 " + maxDanmuTime + "s → " + videoDur + "s ratio=" + String.format("%.3f", ratio));
+                    // 弹幕时间戳压缩匹配视频时长（可选）
+                    boolean timeScale = prefs.getBoolean("danmu_time_scale", false);
+                    if (timeScale) {
+                        long videoDur = 0;
+                        Player p = data.getPlayer();
+                        if (p != null && p.getDuration() > 0)
+                            videoDur = p.getDuration() / 1000;
+                        else if (data.getItemDuration() > 0)
+                            videoDur = data.getItemDuration();
+                        if (videoDur > 0 && !list.isEmpty()) {
+                            float maxDanmuTime = list.get(list.size() - 1).time;
+                            if (maxDanmuTime > 0) {
+                                float ratio = (float) videoDur / maxDanmuTime;
+                                for (DanmuView.DanmuComment dc2 : list) {
+                                    dc2.time *= ratio;
+                                }
+                                Log.d(TAG, "[弹幕] 时间匹配 " + maxDanmuTime + "s → " + videoDur + "s ratio=" + String.format("%.3f", ratio));
 
-                            // 差距超过 ±5% 时警告
-                            if (ratio < 0.95f || ratio > 1.05f) {
-                                float diffPct = Math.abs((1f - ratio) * 100f);
-                                String direction = ratio < 1f ? "弹幕偏长" : "弹幕偏短";
-                                showDanmuStatus(direction
-                                        + " 弹幕=" + (int) maxDanmuTime + "s"
-                                        + " 视频=" + (int) videoDur + "s"
-                                        + " 差距=" + String.format("%.1f", diffPct) + "%");
+                                // 差距超过 ±5% 时警告
+                                if (ratio < 0.95f || ratio > 1.05f) {
+                                    float diffPct = Math.abs((1f - ratio) * 100f);
+                                    String direction = ratio < 1f ? "弹幕偏长" : "弹幕偏短";
+                                    showDanmuStatus(direction
+                                            + " 弹幕=" + (int) maxDanmuTime + "s"
+                                            + " 视频=" + (int) videoDur + "s"
+                                            + " 差距=" + String.format("%.1f", diffPct) + "%");
+                                }
                             }
                         }
+                    }
+
+                    // 应用时间偏移
+                    int offsetSec = prefs.getInt("danmu_offset", 0);
+                    if (offsetSec != 0) {
+                        for (DanmuView.DanmuComment dc3 : list) {
+                            dc3.time += offsetSec;
+                        }
+                        Log.d(TAG, "[弹幕] 时间偏移 " + offsetSec + "s");
                     }
 
                     if (danmuView != null) {
