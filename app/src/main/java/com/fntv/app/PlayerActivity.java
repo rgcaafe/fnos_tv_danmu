@@ -52,6 +52,14 @@ public class PlayerActivity extends AppCompatActivity {
     private SubtitleMergeOverlay subtitleMerge;
 
     private Handler handler = new Handler(Looper.getMainLooper());
+    private final Runnable infoRefreshR = new Runnable() {
+        @Override public void run() {
+            if (infoVis) {
+                updateInfo();
+                handler.postDelayed(this, 1000);
+            }
+        }
+    };
     private String itemGuid, baseUrl, itemTitle, itemTV, itemPoster, itemCategory, parentGuid;
     private long itemDuration;
     private FnApiManager apiManager;
@@ -732,6 +740,7 @@ public class PlayerActivity extends AppCompatActivity {
     /** 开始播放（加载到 ExoPlayer） */
     private void startPlayback() {
         if (mediaGuid == null) return;
+        OkHttpExoDataSource.resetLoadedBytes();
         CloudStreamManager.PlaybackConfig cfg = cloudStreamManager.getPlaybackConfig(baseUrl, mediaGuid);
         OkHttpExoDataSource.setChunkedMode(cfg.chunkedModeSize);
         useHls = cfg.hls;
@@ -754,6 +763,7 @@ public class PlayerActivity extends AppCompatActivity {
     /** 直播频道播放（直接用 live_channels 返回的地址） */
     private void playLiveStream(String url) {
         if (player == null) return;
+        OkHttpExoDataSource.resetLoadedBytes();
         savedPlaybackUrl = url;
         useHls = url.contains(".m3u8");
         com.google.android.exoplayer2.upstream.DataSource.Factory f = () -> new OkHttpExoDataSource(apiManager.getStreamClient());
@@ -1013,6 +1023,7 @@ public class PlayerActivity extends AppCompatActivity {
 
     private void switchMediaSource(boolean toHls) {
         if (player == null || !cloudStreamManager.hasDirectUrl()) return;
+        OkHttpExoDataSource.resetLoadedBytes();
         handler.post(() -> {
             String u = cloudStreamManager.getCloudDirectUrl();
             com.google.android.exoplayer2.upstream.DataSource.Factory f2 = () -> new OkHttpExoDataSource(apiManager.getStreamClient());
@@ -1175,8 +1186,11 @@ public class PlayerActivity extends AppCompatActivity {
                     : (btnSubtitleTrack != null ? btnSubtitleTrack.getId()
                     : (btnHdr != null ? btnHdr.getId() : btnCloseInfo.getId())));
             updateInfo();
+            handler.removeCallbacks(infoRefreshR);
+            handler.postDelayed(infoRefreshR, 1000);
             btnCloseInfo.post(() -> btnCloseInfo.requestFocus());
         } else {
+            handler.removeCallbacks(infoRefreshR);
             // 关闭时恢复焦点导航
             ((ViewGroup) controller).setDescendantFocusability(ViewGroup.FOCUS_AFTER_DESCENDANTS);
             ((ViewGroup) topBar).setDescendantFocusability(ViewGroup.FOCUS_AFTER_DESCENDANTS);
@@ -1408,6 +1422,19 @@ public class PlayerActivity extends AppCompatActivity {
         if (durMs > 0) {
             if (x.length() > 0) x.append("\n");
             x.append("时长 ").append(FormatUtils.fmtTime((int)(durMs/1000)));
+        }
+        // 已下载/缓存数据量 与 总数据量
+        long loadedBytes = OkHttpExoDataSource.getLoadedBytes();
+        long totalBytes = streamFileSize;
+        if (totalBytes <= 0 && !useHls) totalBytes = OkHttpExoDataSource.lastTotalLength;
+        if (x.length() > 0) x.append("\n");
+        x.append("已缓存 ").append(loadedBytes > 0 ? FormatUtils.fmtSize(loadedBytes) : "0 KB");
+        x.append(" / ");
+        if (totalBytes > 0) {
+            x.append(FormatUtils.fmtSize(totalBytes)).append(" (")
+                    .append(Math.min(100, loadedBytes * 100 / totalBytes)).append("%)");
+        } else {
+            x.append("未知");
         }
         if (infoTextExtra != null) infoTextExtra.setText(x.toString());
     }

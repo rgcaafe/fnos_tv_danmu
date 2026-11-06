@@ -1,7 +1,7 @@
 {
-    "versionCode": 22,
-    "versionName": "1.2.2",
-    "apkUrl": "https://gitee.com/coffee710/fntv/releases/download/v1.2.2/FNTV_release_v1.2.2_20260910_2139.apk",
-    "changelog": "1.新增缓冲时间设置",
+    "versionCode": 23,
+    "versionName": "1.2.3",
+    "apkUrl": "https://gitee.com/coffee710/fntv/releases/download/v1.2.3/FNTV_release_v1.2.3_20261106_1530.apk",
+    "changelog": "1.新增缓冲下载量显示\n2.修复媒体库不显示的问题",
     "forceUpdate": false
   }

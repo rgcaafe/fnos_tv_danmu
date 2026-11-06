@@ -772,7 +772,7 @@ public class HomeActivity extends AppCompatActivity {
         String sortType = libSortOrderIndex == 0 ? "ASC" : "DESC";
         ItemListRequest request = new ItemListRequest(ancestorGuid,
                 Arrays.asList("Movie", "TV", "Directory", "Video"),
-                true, sortColumn, sortType, 50);
+                true, sortColumn, sortType, 10000);
         apiManager.getApi().getItemList(request)
                 .enqueue(new Callback<ApiResponse<ItemListResponse>>() {
             @Override
