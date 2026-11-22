@@ -1,7 +1,7 @@
 {
-    "versionCode": 23,
-    "versionName": "1.2.3",
-    "apkUrl": "https://gitee.com/coffee710/fntv/releases/download/v1.2.3/FNTV_release_v1.2.3_20261106_1530.apk",
-    "changelog": "1.新增缓冲下载量显示\n2.修复媒体库不显示的问题",
+    "versionCode": 24,
+    "versionName": "1.2.4",
+    "apkUrl": "https://gitee.com/coffee710/fntv/releases/download/v1.2.4/FNTV_release_v1.2.4_20261122_1845.apk",
+    "changelog": "1. 全新风格界面，支持明暗主题切换。\n2. 页面重构，导航更清晰。\n3. 优化弹幕性能。\n4. 注意：安卓 4.4 未实测，请谨慎升级。",
     "forceUpdate": false
   }
