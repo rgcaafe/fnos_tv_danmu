@@ -304,9 +304,13 @@ public class DanmuManager {
 
         final android.app.Dialog dialog = new android.app.Dialog(activity, android.R.style.Theme_DeviceDefault_Dialog_NoActionBar);
         dialog.setContentView(R.layout.dialog_danmu_settings);
-        dialog.getWindow().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(0xDD1A1A1A));
+        dialog.getWindow().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(0));
         int screenH = activity.getResources().getDisplayMetrics().heightPixels;
-        dialog.getWindow().setLayout(ViewGroup.LayoutParams.MATCH_PARENT, (int) (screenH * 0.9f));
+        int screenW = activity.getResources().getDisplayMetrics().widthPixels;
+        float screenDensity = activity.getResources().getDisplayMetrics().density;
+        int dialogW = Math.min(screenW - (int) (64 * screenDensity), (int) (560 * screenDensity));
+        dialog.getWindow().setLayout(Math.max((int) (280 * screenDensity), dialogW),
+                (int) (screenH * 0.86f));
 
         final Switch sw = dialog.findViewById(R.id.dm_sw);
         sw.setChecked(isOn[0]);
@@ -325,12 +329,14 @@ public class DanmuManager {
         swTimeScale.setChecked(p.getBoolean("danmu_time_scale", false));
 
         final Button matchBtn = dialog.findViewById(R.id.dm_matchBtn);
+        PlayerDialog.styleButton(matchBtn, false);
         matchBtn.setOnClickListener(v -> {
             dialog.dismiss();
             showDanmuSearch();
         });
 
         final Button listBtn = dialog.findViewById(R.id.dm_listBtn);
+        PlayerDialog.styleButton(listBtn, false);
         listBtn.setOnClickListener(v -> {
             dialog.dismiss();
             showDanmuList();
@@ -351,8 +357,17 @@ public class DanmuManager {
         final Switch olSw = dialog.findViewById(R.id.dm_outline);
         olSw.setChecked(outline[0]);
 
-        dialog.findViewById(R.id.dm_cancel).setOnClickListener(v -> dialog.dismiss());
-        dialog.findViewById(R.id.dm_ok).setOnClickListener(v -> {
+        // 遥控器上下导航：两个开关要能被上下两侧的滑条直接选中
+        bindSwitchFocus(dialog, R.id.dm_fontsize, R.id.dm_density, R.id.dm_outline);
+        bindSwitchFocus(dialog, R.id.dm_maxcomments, R.id.dm_fps, R.id.dm_custom_fps);
+
+        Button cancelBtn = dialog.findViewById(R.id.dm_cancel);
+        Button okBtn = dialog.findViewById(R.id.dm_ok);
+        PlayerDialog.styleButton(cancelBtn, false);
+        PlayerDialog.styleButton(okBtn, true);
+
+        cancelBtn.setOnClickListener(v -> dialog.dismiss());
+        okBtn.setOnClickListener(v -> {
             isOn[0] = sw.isChecked();
             outline[0] = olSw.isChecked();
             int a = readSlider(dialog, R.id.dm_area, 10);
@@ -384,7 +399,7 @@ public class DanmuManager {
                 boolean wasOff = !danmuOn;
                 danmuOn = true;
                 danmuView.setVisibility(View.VISIBLE);
-                btnDanmu.setText("弹✕");
+                btnDanmu.setText("弹");
                 danmuView.setAreaPct(a);
                 danmuView.setSpeedMul(sp);
                 danmuView.setOpacity(op);
@@ -396,17 +411,19 @@ public class DanmuManager {
                 danmuView.setCustomFps(swCustomFps.isChecked());
                 danmuView.setTargetFps(ft);
                 danmuView.setDanmuOffset(of);
-                danmuView.stop();
-                danmuView.start();
-                if (danmuItemsOriginal != null) {
-                    // 从原始数据重新应用时间缩放和偏移
-                    danmuItems = new java.util.ArrayList<>(danmuItemsOriginal);
+
+                // 用原始数据重建列表并定位到当前进度。
+                // 注意：这里不能 stop()/start() 或把 eIdx 留在 0，否则弹幕会停滞在旧时间点看不见。
+                List<DanmuView.DanmuComment> base = danmuItemsOriginal != null
+                        ? danmuItemsOriginal : danmuItems;
+                if (base != null && !base.isEmpty()) {
+                    danmuItems = cloneComments(base);
                     boolean timeScale = prefs.getBoolean("danmu_time_scale", false);
                     if (timeScale) {
                         long videoDur = 0;
-                        Player player = data.getPlayer();
-                        if (player != null && player.getDuration() > 0)
-                            videoDur = player.getDuration() / 1000;
+                        Player p1 = data.getPlayer();
+                        if (p1 != null && p1.getDuration() > 0)
+                            videoDur = p1.getDuration() / 1000;
                         else if (data.getItemDuration() > 0)
                             videoDur = data.getItemDuration();
                         if (videoDur > 0 && !danmuItems.isEmpty()) {
@@ -419,15 +436,23 @@ public class DanmuManager {
                             }
                         }
                     }
-                    int offsetSec = prefs.getInt("danmu_offset", 0);
-                    if (offsetSec != 0) {
+                    if (of != 0) {
                         for (DanmuView.DanmuComment dc : danmuItems) {
-                            dc.time += offsetSec;
+                            dc.time += of;
                         }
                     }
                     danmuView.loadDanmu(danmuItems);
-                } else if (danmuItems != null) {
-                    danmuView.loadDanmu(danmuItems);
+                    long cur = 0;
+                    Player p2 = data.getPlayer();
+                    if (p2 != null) cur = p2.getCurrentPosition();
+                    danmuView.seekToTime(cur);
+                }
+                Player p3 = data.getPlayer();
+                if (p3 == null || p3.isPlaying()) {
+                    danmuView.start();
+                } else {
+                    danmuView.pause();
+                    danmuView.invalidate();
                 }
                 // 从关闭→打开时，触发一次匹配
                 if (wasOff && pendingDanmuTitle != null) loadDanmu(pendingDanmuTitle, pendingDanmuGuid);
@@ -502,6 +527,49 @@ public class DanmuManager {
         return sb != null ? sb.getProgress() + min : min;
     }
 
+    /** 开关与上下滑条之间的遥控器焦点绑定 */
+    private void bindSwitchFocus(android.app.Dialog d, int aboveInclude, int belowInclude, int switchId) {
+        final SeekBar above = findSlider(d, aboveInclude);
+        final SeekBar below = findSlider(d, belowInclude);
+        final View sw = d.findViewById(switchId);
+        if (sw == null) return;
+        if (above != null) above.setNextFocusDownId(sw.getId());
+        if (below != null) below.setNextFocusUpId(sw.getId());
+        sw.setOnKeyListener((v, keyCode, event) -> {
+            if (event.getAction() == android.view.KeyEvent.ACTION_DOWN) {
+                if (keyCode == android.view.KeyEvent.KEYCODE_DPAD_UP && above != null) {
+                    above.requestFocus();
+                    return true;
+                }
+                if (keyCode == android.view.KeyEvent.KEYCODE_DPAD_DOWN && below != null) {
+                    below.requestFocus();
+                    return true;
+                }
+            }
+            return false;
+        });
+    }
+
+    private SeekBar findSlider(android.app.Dialog d, int includeId) {
+        ViewGroup g = d.findViewById(includeId);
+        return g != null ? g.findViewById(R.id.dm_seekbar) : null;
+    }
+
+    /** 深拷贝弹幕评论，避免重复应用时间缩放/偏移时污染原始数据 */
+    private List<DanmuView.DanmuComment> cloneComments(List<DanmuView.DanmuComment> src) {
+        List<DanmuView.DanmuComment> out = new java.util.ArrayList<>(src.size());
+        for (DanmuView.DanmuComment c : src) {
+            DanmuView.DanmuComment n = new DanmuView.DanmuComment();
+            n.text = c.text;
+            n.time = c.time;
+            n.color = c.color;
+            n.type = c.type;
+            n.fontSize = c.fontSize;
+            out.add(n);
+        }
+        return out;
+    }
+
     // ========== 弹幕搜索 ==========
 
     private void showDanmuSearch() {
@@ -529,6 +597,8 @@ public class DanmuManager {
         final Button sBtn = dialog.findViewById(R.id.dm_search_btn);
         final LinearLayout results = dialog.findViewById(R.id.dm_search_results);
         final Button cancelBtn = dialog.findViewById(R.id.dm_search_cancel);
+        PlayerDialog.styleButton(sBtn, true);
+        PlayerDialog.styleButton(cancelBtn, false);
         cancelBtn.setOnClickListener(v -> dialog.dismiss());
 
         String autoFill = data.getItemTV() != null && !data.getItemTV().isEmpty() ? data.getItemTV() : (data.getItemTitle() != null ? data.getItemTitle() : "");
@@ -602,6 +672,7 @@ public class DanmuManager {
                             String labelStr = epCount > 0 ? t + "  (" + epCount + "集)" : t;
                             Button b = new Button(activity);
                             b.setBackgroundResource(R.drawable.bg_search_item);
+                            if (android.os.Build.VERSION.SDK_INT >= 21) b.setBackgroundTintList(null);
                             b.setText(labelStr);
                             b.setTextColor(0xFFEEEEEE);
                             b.setPadding(16, 14, 16, 14);
@@ -780,6 +851,7 @@ public class DanmuManager {
         }
 
         closeBtn.setOnClickListener(v -> dialog.dismiss());
+        PlayerDialog.styleButton(closeBtn, false);
         dialog.show();
     }
 
@@ -857,6 +929,7 @@ public class DanmuManager {
                         int epIndex = ei;
                         Button b = new Button(activity);
                         b.setBackgroundResource(R.drawable.bg_search_item);
+                        if (android.os.Build.VERSION.SDK_INT >= 21) b.setBackgroundTintList(null);
                         b.setText(epLabels[ei]);
                         b.setTextColor(0xFFEEEEEE);
                         b.setPadding(16, 14, 16, 14);
@@ -893,6 +966,7 @@ public class DanmuManager {
                     // 取消 → 返回搜索界面
                     Button cancelBtn2 = dialog.findViewById(R.id.dm_search_cancel);
                     cancelBtn2.setText("返回搜索");
+                    PlayerDialog.styleButton(cancelBtn2, false);
                     cancelBtn2.setOnClickListener(v -> {
                         dialog.dismiss();
                         showDanmuSearch();
@@ -993,7 +1067,7 @@ public class DanmuManager {
 
                 final int loaded = list.size();
                 activity.runOnUiThread(() -> {
-                    danmuItemsOriginal = new java.util.ArrayList<>(list);
+                    danmuItemsOriginal = cloneComments(list);
                     danmuItems = list;
                     // 弹幕时间戳压缩匹配视频时长（可选）
                     boolean timeScale = prefs.getBoolean("danmu_time_scale", false);

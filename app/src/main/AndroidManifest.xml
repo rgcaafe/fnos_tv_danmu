@@ -1,27 +1,33 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     package="com.fntv.app">
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
+    <!-- 手机 / 平板 / 电视都要能装：触摸屏与 Leanback 都声明为非必需 -->
+    <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
+    <uses-feature android:name="android.software.leanback" android:required="false" />
+
     <application
         android:allowBackup="true"
-        android:name="androidx.multidex.MultiDexApplication"
+        android:name=".App"
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher"
         android:label="FN TV"
+        android:supportsRtl="true"
         android:theme="@style/Theme.FntvApp"
         android:networkSecurityConfig="@xml/network_security_config"
-        android:supportsRtl="true">
+        tools:ignore="MissingTvBanner">
 
         <activity
-            android:name=".MainActivity"
+            android:name=".ui.login.LoginActivity"
             android:exported="true"
             android:launchMode="singleTask"
-            android:configChanges="orientation|screenSize|keyboardHidden"
-            android:screenOrientation="sensor">
+            android:screenOrientation="sensor"
+            android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -30,13 +36,28 @@
         </activity>
 
         <activity
-            android:name=".HomeActivity"
+            android:name=".ui.home.HomeActivity"
+            android:exported="false"
             android:configChanges="orientation|screenSize|keyboardHidden"
             android:screenOrientation="sensor" />
+
+        <activity
+            android:name=".ui.browse.BrowseActivity"
+            android:exported="false"
+            android:configChanges="orientation|screenSize|keyboardHidden"
+            android:screenOrientation="sensor"
+            android:windowSoftInputMode="adjustResize" />
+
+        <activity
+            android:name=".ui.detail.DetailActivity"
+            android:exported="false"
+            android:screenOrientation="sensor" />
+
         <activity
             android:name=".PlayerActivity"
-            android:configChanges="orientation|screenSize|keyboardHidden"
-            android:screenOrientation="sensor" />
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden|keyboard|navigation|uiMode"
+            android:screenOrientation="sensorLandscape"
+            android:theme="@style/Theme.FntvApp" />
 
         <provider
             android:name="androidx.core.content.FileProvider"

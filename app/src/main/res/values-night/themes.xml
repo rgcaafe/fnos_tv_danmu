@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <style name="Theme.FntvApp" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/accent</item>
+        <item name="colorPrimaryVariant">@color/accent</item>
+        <item name="colorOnPrimary">@color/text_on_accent</item>
+        <item name="colorSecondary">@color/accent</item>
+        <item name="colorSecondaryVariant">@color/accent</item>
+        <item name="colorOnSecondary">@color/text_on_accent</item>
+        <item name="colorSurface">@color/surface_card</item>
+        <item name="colorOnSurface">@color/label</item>
+        <item name="colorOnBackground">@color/label</item>
+        <item name="colorError">@color/danger</item>
+        <item name="colorOnError">#FFFFFFFF</item>
+
+        <item name="android:windowBackground">@color/surface_grouped</item>
+        <item name="android:textColorPrimary">@color/label</item>
+        <item name="android:textColorSecondary">@color/label_2</item>
+        <item name="android:textColorHint">@color/label_3</item>
+        <item name="android:statusBarColor" tools:targetApi="21">@android:color/transparent</item>
+        <item name="android:navigationBarColor" tools:targetApi="21">@color/surface_grouped</item>
+        <item name="android:windowLightStatusBar" tools:targetApi="23">false</item>
+        <item name="android:windowLightNavigationBar" tools:targetApi="27">false</item>
+        <item name="android:windowActionModeOverlay">true</item>
+        <item name="buttonStyle">@style/Widget.Fntv.Button</item>
+
+        <item name="materialAlertDialogTheme">@style/Fntv.AlertDialog</item>
+        <item name="android:alertDialogTheme">@style/Fntv.AlertDialog</item>
+    </style>
+
+    <style name="Fntv.AlertDialog" parent="ThemeOverlay.MaterialComponents.MaterialAlertDialog">
+        <item name="colorPrimary">@color/accent</item>
+        <item name="colorSurface">@color/surface_elevated</item>
+        <item name="colorOnSurface">@color/label</item>
+        <item name="android:textColorPrimary">@color/label</item>
+        <item name="android:textColorSecondary">@color/label_2</item>
+    </style>
+</resources>

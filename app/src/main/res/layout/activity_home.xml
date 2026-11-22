@@ -1,73 +1,32 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-首页主界面 - 底部三 Tab 导航
-影视: 浏览媒体内容（按媒体库分类）
-媒体库: 媒体库分组列表
-设置: 用户配置
-DPAD 遥控器友好
+  首页骨架（Netflix TV 结构）：
+  整屏内容 + 左侧图标导航（覆盖在内容之上，不占布局宽度）。
+  大图推荐位贴到状态栏下方，横向卡片行左右出血。
 -->
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/rootLayout"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/bg_dark"
-    android:orientation="vertical">
+    android:background="@color/surface_grouped">
 
-    <!-- ========== 内容区域 ========== -->
     <FrameLayout
-        android:id="@+id/contentContainer"
+        android:id="@+id/content"
         android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1">
+        android:layout_height="match_parent">
 
-        <!-- Tab 1: 影视 -->
-        <LinearLayout
-            android:id="@+id/panelMovies"
+        <!-- 首页：大图 + 横向卡片行（焦点滚动统一由 HomeActivity 处理） -->
+        <com.fntv.app.ui.common.HomeRecyclerView
+            android:id="@+id/homeList"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:orientation="vertical"
-            android:visibility="visible">
+            android:clipChildren="false"
+            android:clipToPadding="false"
+            android:overScrollMode="never"
+            android:scrollbars="none" />
 
-            <ScrollView
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:fillViewport="true"
-                android:scrollbars="none"
-                android:descendantFocusability="afterDescendants">
-
-                <LinearLayout
-                    android:id="@+id/moviesGridContainer"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:padding="8dp">
-
-                    <TextView
-                        android:id="@+id/tvMoviesLoading"
-                        android:layout_width="match_parent"
-                        android:layout_height="120dp"
-                        android:gravity="center"
-                        android:text="加载中..."
-                        android:textColor="@color/text_hint"
-                        android:textSize="14sp"
-                        android:visibility="gone" />
-
-                    <TextView
-                        android:id="@+id/tvMoviesEmpty"
-                        android:layout_width="match_parent"
-                        android:layout_height="120dp"
-                        android:gravity="center"
-                        android:text="请选择媒体库"
-                        android:textColor="@color/text_hint"
-                        android:textSize="14sp"
-                        android:visibility="visible" />
-
-                </LinearLayout>
-
-            </ScrollView>
-
-        </LinearLayout>
-
-        <!-- Tab 2: 媒体库 -->
+        <!-- 媒体库 -->
         <LinearLayout
             android:id="@+id/panelLibrary"
             android:layout_width="match_parent"
@@ -75,439 +34,187 @@ DPAD 遥控器友好
             android:orientation="vertical"
             android:visibility="gone">
 
-            <EditText
-                android:id="@+id/etSearch"
+            <View
+                android:id="@+id/libraryTopSpacer"
                 android:layout_width="match_parent"
-                android:layout_height="46dp"
-                android:layout_marginLeft="8dp"
-                android:layout_marginRight="8dp"
-                android:layout_marginTop="8dp"
-                android:background="@drawable/bg_input"
-                android:hint="搜索媒体库..."
-                android:textColor="@color/text_primary"
-                android:textColorHint="@color/text_hint"
-                android:textSize="14sp"
-                android:paddingLeft="14dp"
-                android:paddingRight="14dp"
-                android:singleLine="true"
-                android:imeOptions="actionSearch"
-                android:inputType="text"
-                android:focusable="true" />
+                android:layout_height="0dp" />
 
             <ScrollView
                 android:layout_width="match_parent"
-                android:layout_height="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:clipToPadding="false"
                 android:fillViewport="true"
                 android:scrollbars="none">
 
                 <LinearLayout
-                    android:id="@+id/libraryGridContainer"
+                    android:id="@+id/libraryContainer"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
-                    android:padding="8dp">
-
-                    <TextView
-                        android:id="@+id/tvLibraryLoading"
-                        android:layout_width="match_parent"
-                        android:layout_height="120dp"
-                        android:gravity="center"
-                        android:text="加载中..."
-                        android:textColor="@color/text_hint"
-                        android:textSize="14sp"
-                        android:visibility="gone" />
-
-                    <TextView
-                        android:id="@+id/tvLibraryEmpty"
-                        android:layout_width="match_parent"
-                        android:layout_height="120dp"
-                        android:gravity="center"
-                        android:text="暂无媒体库"
-                        android:textColor="@color/text_hint"
-                        android:textSize="14sp"
-                        android:visibility="gone" />
-
-                </LinearLayout>
-
+                    android:paddingBottom="28dp" />
             </ScrollView>
-
         </LinearLayout>
 
-        <!-- Tab 3: 设置 -->
+        <!-- 搜索 -->
         <LinearLayout
-            android:id="@+id/panelSettings"
+            android:id="@+id/panelSearch"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:orientation="vertical"
             android:visibility="gone">
 
-            <RelativeLayout
-                android:id="@+id/settingsHeader"
+            <View
+                android:id="@+id/searchTopSpacer"
                 android:layout_width="match_parent"
-                android:layout_height="40dp"
+                android:layout_height="0dp" />
+
+            <LinearLayout
+                android:id="@+id/searchBox"
+                android:layout_width="match_parent"
+                android:layout_height="44dp"
+                android:layout_marginBottom="14dp"
+                android:background="@drawable/bg_search"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
                 android:paddingLeft="14dp"
                 android:paddingRight="14dp">
 
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_centerVertical="true"
-                    android:text="设置"
-                    android:textColor="@color/text_primary"
-                    android:textSize="15sp"
-                    android:textStyle="bold" />
+                <androidx.appcompat.widget.AppCompatImageView
+                    android:id="@+id/ivSearch"
+                    android:layout_width="17dp"
+                    android:layout_height="17dp"
+                    android:contentDescription="@null"
+                    app:srcCompat="@drawable/ic_search" />
 
-            </RelativeLayout>
+                <EditText
+                    android:id="@+id/etSearch"
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_marginLeft="10dp"
+                    android:layout_weight="1"
+                    android:background="@null"
+                    android:gravity="center_vertical"
+                    android:hint="搜索电影、剧集"
+                    android:imeOptions="actionSearch"
+                    android:inputType="text"
+                    android:singleLine="true"
+                    android:textColor="@color/label"
+                    android:textColorHint="@color/label_3"
+                    android:textSize="15sp" />
+            </LinearLayout>
 
-            <View
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/searchGrid"
                 android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:background="@color/divider" />
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:clipToPadding="false"
+                android:scrollbars="none" />
 
-            <ScrollView
+            <TextView
+                android:id="@+id/searchEmpty"
                 android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:fillViewport="true"
-                android:scrollbars="none">
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:padding="16dp">
-
-                    <!-- 账户信息 -->
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:background="@drawable/bg_card"
-                        android:orientation="vertical"
-                        android:padding="16dp">
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="账户信息"
-                            android:textColor="@color/text_primary"
-                            android:textSize="14sp"
-                            android:textStyle="bold" />
-
-                        <View
-                            android:layout_width="match_parent"
-                            android:layout_height="1dp"
-                            android:layout_marginTop="8dp"
-                            android:layout_marginBottom="8dp"
-                            android:background="@color/divider" />
-
-                        <TextView
-                            android:id="@+id/tvSettingUsername"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="用户名: --"
-                            android:textColor="@color/text_secondary"
-                            android:textSize="13sp" />
-
-                        <TextView
-                            android:id="@+id/tvSettingServer"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="4dp"
-                            android:text=""
-                            android:textColor="@color/text_hint"
-                            android:textSize="11sp" />
-
-                    </LinearLayout>
-
-                    <!-- 播放设置 -->
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="12dp"
-                        android:background="@drawable/bg_card"
-                        android:orientation="vertical"
-                        android:padding="16dp">
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="播放设置"
-                            android:textColor="@color/text_primary"
-                            android:textSize="14sp"
-                            android:textStyle="bold" />
-
-                        <View
-                            android:layout_width="match_parent"
-                            android:layout_height="1dp"
-                            android:layout_marginTop="8dp"
-                            android:layout_marginBottom="8dp"
-                            android:background="@color/divider" />
-
-                        <RelativeLayout
-                            android:id="@+id/rlDecoderSetting"
-                            android:layout_width="match_parent"
-                            android:layout_height="52dp"
-                            android:background="@drawable/bg_input"
-                            android:focusable="true"
-                            android:paddingLeft="12dp"
-                            android:paddingRight="12dp">
-
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:layout_centerVertical="true"
-                                android:text="解码模式"
-                                android:textColor="@color/text_primary"
-                                android:textSize="14sp" />
-
-                            <TextView
-                                android:id="@+id/tvDecoderValue"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:layout_alignParentRight="true"
-                                android:layout_centerVertical="true"
-                                android:text="硬解"
-                                android:textColor="@color/colorAccent"
-                                android:textSize="14sp" />
-
-                        </RelativeLayout>
-
-                        <!-- 快进快退步长 -->
-                        <RelativeLayout
-                            android:id="@+id/rlSeekStep"
-                            android:layout_width="match_parent"
-                            android:layout_height="52dp"
-                            android:layout_marginTop="8dp"
-                            android:background="@drawable/bg_input"
-                            android:focusable="true"
-                            android:paddingLeft="12dp"
-                            android:paddingRight="12dp">
-
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:layout_centerVertical="true"
-                                android:text="快进退步长"
-                                android:textColor="@color/text_primary"
-                                android:textSize="14sp" />
-
-                            <TextView
-                                android:id="@+id/tvSeekStepValue"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:layout_alignParentRight="true"
-                                android:layout_centerVertical="true"
-                                android:text="10s"
-                                android:textColor="@color/colorAccent"
-                                android:textSize="14sp" />
-
-                        </RelativeLayout>
-
-                        <!-- 缓冲时间 -->
-                        <RelativeLayout
-                            android:id="@+id/rlBufferTime"
-                            android:layout_width="match_parent"
-                            android:layout_height="52dp"
-                            android:layout_marginTop="8dp"
-                            android:background="@drawable/bg_input"
-                            android:focusable="true"
-                            android:paddingLeft="12dp"
-                            android:paddingRight="12dp">
-
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:layout_centerVertical="true"
-                                android:text="缓冲时间"
-                                android:textColor="@color/text_primary"
-                                android:textSize="14sp" />
-
-                            <TextView
-                                android:id="@+id/tvBufferTimeValue"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:layout_alignParentRight="true"
-                                android:layout_centerVertical="true"
-                                android:text="30s"
-                                android:textColor="@color/colorAccent"
-                                android:textSize="14sp" />
-
-                        </RelativeLayout>
-
-                        <!-- 弹幕服务器地址 -->
-                        <RelativeLayout
-                            android:id="@+id/rlDanmuSetting"
-                            android:layout_width="match_parent"
-                            android:layout_height="52dp"
-                            android:layout_marginTop="8dp"
-                            android:background="@drawable/bg_input"
-                            android:focusable="true"
-                            android:paddingLeft="12dp"
-                            android:paddingRight="12dp">
-
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:layout_centerVertical="true"
-                                android:text="弹幕服务器"
-                                android:textColor="@color/text_primary"
-                                android:textSize="14sp" />
-
-                            <TextView
-                                android:id="@+id/tvDanmuUrl"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:layout_alignParentRight="true"
-                                android:layout_centerVertical="true"
-                                android:text=""
-                                android:textColor="@color/colorAccent"
-                                android:textSize="12sp"
-                                android:maxWidth="160dp"
-                                android:singleLine="true"
-                                android:ellipsize="end" />
-
-                        </RelativeLayout>
-
-                    </LinearLayout>
-
-                    <!-- 关于 -->
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="12dp"
-                        android:background="@drawable/bg_card"
-                        android:orientation="vertical"
-                        android:padding="16dp">
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="关于"
-                            android:textColor="@color/text_primary"
-                            android:textSize="14sp"
-                            android:textStyle="bold" />
-
-                        <View
-                            android:layout_width="match_parent"
-                            android:layout_height="1dp"
-                            android:layout_marginTop="8dp"
-                            android:layout_marginBottom="8dp"
-                            android:background="@color/divider" />
-
-                        <TextView
-                            android:id="@+id/tvVersionName"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="FN TV v1.0"
-                            android:textColor="@color/text_secondary"
-                            android:textSize="13sp" />
-
-                        <Button
-                            android:id="@+id/btnCheckUpdate"
-                            android:layout_width="match_parent"
-                            android:layout_height="48dp"
-                            android:layout_marginTop="12dp"
-                            android:background="@drawable/bg_btn_primary"
-                            android:focusable="true"
-                            android:text="检查更新"
-                            android:textAllCaps="false"
-                            android:textColor="@color/text_white"
-                            android:textSize="14sp" />
-
-                        <Button
-                            android:id="@+id/btnFeedback"
-                            android:layout_width="match_parent"
-                            android:layout_height="48dp"
-                            android:layout_marginTop="10dp"
-                            android:background="@drawable/bg_input"
-                            android:focusable="true"
-                            android:text="问题反馈"
-                            android:textAllCaps="false"
-                            android:textColor="@color/text_primary"
-                            android:textSize="14sp" />
-
-                    </LinearLayout>
-
-                    <!-- 登出 -->
-                    <Button
-                        android:id="@+id/btnLogout"
-                        android:layout_width="match_parent"
-                        android:layout_height="52dp"
-                        android:layout_marginTop="24dp"
-                        android:background="@drawable/bg_btn_primary"
-                        android:focusable="true"
-                        android:text="退出登录"
-                        android:textAllCaps="false"
-                        android:textColor="@color/text_white"
-                        android:textSize="15sp"
-                        android:textStyle="bold" />
-
-                </LinearLayout>
-
-            </ScrollView>
-
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:paddingTop="60dp"
+                android:text="输入关键词，搜索电影与剧集"
+                android:textColor="@color/label_3"
+                android:textSize="14sp" />
         </LinearLayout>
 
+        <!-- 收藏 -->
+        <LinearLayout
+            android:id="@+id/panelFavorites"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical"
+            android:visibility="gone">
+
+            <View
+                android:id="@+id/favoritesTopSpacer"
+                android:layout_width="match_parent"
+                android:layout_height="0dp" />
+
+            <LinearLayout
+                android:id="@+id/favoritesHeader"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/favoritesTitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="收藏"
+                    android:textColor="@color/label"
+                    android:textSize="31sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/favoritesSubtitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:text="已收藏的剧集与单集"
+                    android:textColor="@color/label_2"
+                    android:textSize="14sp" />
+            </LinearLayout>
+
+            <FrameLayout
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1">
+
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/favoritesGrid"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:clipToPadding="false"
+                    android:overScrollMode="never"
+                    android:scrollbars="none" />
+
+                <TextView
+                    android:id="@+id/favoritesEmpty"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center"
+                    android:text="还没有收藏内容"
+                    android:textColor="@color/label_3"
+                    android:textSize="15sp"
+                    android:visibility="gone" />
+            </FrameLayout>
+        </LinearLayout>
+
+        <!-- 设置 -->
+        <ScrollView
+            android:id="@+id/panelSettings"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:clipToPadding="false"
+            android:scrollbars="none"
+            android:visibility="gone">
+
+            <LinearLayout
+                android:id="@+id/settingsContainer"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:paddingBottom="32dp" />
+        </ScrollView>
+
+        <!-- 滚动时盖住状态栏，保证系统图标可读 -->
+        <View
+            android:id="@+id/topScrim"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_gravity="top" />
     </FrameLayout>
 
-    <View
-        android:layout_width="match_parent"
-        android:layout_height="1dp"
-        android:background="@color/divider" />
-
-    <!-- ========== 底部 Tab 栏 ========== -->
-    <LinearLayout
-        android:id="@+id/tabBar"
-        android:layout_width="match_parent"
-        android:layout_height="52dp"
-        android:background="@color/bg_dark"
-        android:gravity="center"
-        android:orientation="horizontal"
-        android:paddingLeft="6dp"
-        android:paddingRight="6dp">
-
-        <Button
-            android:id="@+id/tabMovies"
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_margin="3dp"
-            android:layout_weight="1"
-            android:background="@drawable/selector_tab"
-            android:focusable="true"
-            android:nextFocusRight="@+id/tabLibrary"
-            android:text="影视"
-            android:textAllCaps="false"
-            android:textColor="@color/text_primary"
-            android:textSize="13sp" />
-
-        <Button
-            android:id="@+id/tabLibrary"
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_margin="3dp"
-            android:layout_weight="1"
-            android:background="@drawable/selector_tab"
-            android:focusable="true"
-            android:nextFocusLeft="@+id/tabMovies"
-            android:nextFocusRight="@+id/tabSettings"
-            android:text="媒体库"
-            android:textAllCaps="false"
-            android:textColor="@color/text_primary"
-            android:textSize="13sp" />
-
-        <Button
-            android:id="@+id/tabSettings"
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_margin="3dp"
-            android:layout_weight="1"
-            android:background="@drawable/selector_tab"
-            android:focusable="true"
-            android:nextFocusLeft="@+id/tabLibrary"
-            android:text="设置"
-            android:textAllCaps="false"
-            android:textColor="@color/text_primary"
-            android:textSize="13sp" />
-
-    </LinearLayout>
-
-</LinearLayout>
+    <!-- 左侧图标导航（覆盖在内容之上） -->
+    <FrameLayout
+        android:id="@+id/rail"
+        android:layout_width="@dimen/rail_width"
+        android:layout_height="match_parent"
+        android:layout_gravity="left" />
+</FrameLayout>

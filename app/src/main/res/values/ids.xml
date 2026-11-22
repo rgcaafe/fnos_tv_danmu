@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <item name="tabMovies" type="id" />
+    <item name="tabLibrary" type="id" />
+    <item name="tabSettings" type="id" />
+</resources>

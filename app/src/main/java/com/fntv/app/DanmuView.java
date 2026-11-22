@@ -1,9 +1,11 @@
 package com.fntv.app;
 
 import android.content.Context;
+import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
+import android.graphics.RectF;
 import android.graphics.Typeface;
 import android.os.Build;
 import android.os.Handler;
@@ -14,12 +16,15 @@ import android.view.View;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 /** 弹幕渲染层 — 滚动 + 顶部/底部固定弹幕，自适应刷新率 */
 public class DanmuView extends View {
     private static final String TAG = "DanmuView";
 
     private final Paint paint;
+    /** API 19 没有 Canvas.drawRoundRect(float...) 重载，统一复用 RectF */
+    private final RectF roundRect = new RectF();
     private final List<DanmuItem> items = new ArrayList<>();
     private float screenDensity;
     private boolean running = false;
@@ -39,8 +44,23 @@ public class DanmuView extends View {
     private int danmuOffset = 0;
     private final List<DanmuItem> activeScroll = new ArrayList<>();
     private final List<DanmuItem> activeStatic = new ArrayList<>();
+    private final List<DanmuItem> deadScroll = new ArrayList<>();
+    private final List<DanmuItem> deadStatic = new ArrayList<>();
     private DanmuItem pausedItem = null;
     private long pausedTime = 0;
+
+    /**
+     * 弹幕文字位图缓存：每帧不再用 Canvas.drawText 重新栅格化文字（电视上最容易卡的地方），
+     * 而是首次出现时把文字（含描边）画到 Bitmap，之后每帧只 drawBitmap + 移动位置。
+     */
+    private final Paint bmpPaint = new Paint();
+    private final java.util.LinkedHashMap<String, Bitmap> textCache =
+            new java.util.LinkedHashMap<String, Bitmap>(128, 0.75f, true) {
+                @Override
+                protected boolean removeEldestEntry(Map.Entry<String, Bitmap> eldest) {
+                    return size() > 160;
+                }
+            };
 
     // 帧调度双模式兜底
     private final Handler frameHandler = new Handler(Looper.getMainLooper());
@@ -62,8 +82,16 @@ public class DanmuView extends View {
     private float getEffectiveSpeedMul() { return speedMul * Math.max(1f, playbackSpeed); }
     public void setOpacity(float v) { opacity = v; updateStyle(); }
     public void setAreaPct(int v) { areaPct = v; }
-    public void setFontSize(float v) { fontSize = v; updateStyle(); }
-    public void setShowOutline(boolean v) { showOutline = v; updateStyle(); }
+    public void setFontSize(float v) {
+        if (fontSize != v) textCache.clear();
+        fontSize = v;
+        updateStyle();
+    }
+    public void setShowOutline(boolean v) {
+        if (showOutline != v) textCache.clear();
+        showOutline = v;
+        updateStyle();
+    }
     public void setDensityPct(int v) { densityPct = v; }
     public void setRowSpacing(float v) { rowSpacing = v; }
     public void setShowScroll(boolean v) { showScroll = v; }
@@ -205,6 +233,9 @@ public class DanmuView extends View {
         items.clear();
         activeScroll.clear();
         activeStatic.clear();
+        deadScroll.clear();
+        deadStatic.clear();
+        textCache.clear();
         eIdx = 0;
     }
 
@@ -217,6 +248,8 @@ public class DanmuView extends View {
         float x, y, speed, tw;
         float ttl;
         boolean paused;
+        Bitmap bmp;           // 文字位图缓存（含描边）
+        float bmpOffX, bmpOffY;
     }
 
     public static class DanmuComment {
@@ -364,7 +397,7 @@ public class DanmuView extends View {
         }
 
         // ── 更新滚动弹幕位置 ──
-        List<DanmuItem> deadScroll = new ArrayList<>();
+        deadScroll.clear();
         for (DanmuItem a : activeScroll) {
             if (!a.paused) {
                 a.x -= a.speed * dt;
@@ -374,7 +407,7 @@ public class DanmuView extends View {
         activeScroll.removeAll(deadScroll);
 
         // ── 更新固定弹幕 TTL ──
-        List<DanmuItem> deadStatic = new ArrayList<>();
+        deadStatic.clear();
         for (DanmuItem a : activeStatic) {
             a.ttl -= dt;
             if (a.ttl <= 0) deadStatic.add(a);
@@ -444,13 +477,27 @@ public class DanmuView extends View {
         return -1;
     }
 
-    /** 绘制单条弹幕（描边 + 填充） */
+    /** 绘制单条弹幕：优先用缓存的文字位图，避免每帧重新栅格化文字 */
     private void drawDanmu(Canvas c, DanmuItem a, float alphaMul) {
-        int alpha = (int)(255 * opacity * alphaMul);
+        int alpha = (int) (255 * opacity * alphaMul);
+        if (a.bmp == null) {
+            a.bmp = obtainTextBitmap(a.text, a.color);
+            if (a.bmp != null) {
+                Paint.FontMetricsInt fm = paint.getFontMetricsInt();
+                int pad = textBitmapPad();
+                a.bmpOffX = -pad;
+                a.bmpOffY = -pad + fm.ascent;
+            }
+        }
+        if (a.bmp != null && !a.bmp.isRecycled()) {
+            bmpPaint.setAlpha(Math.max(0, Math.min(255, alpha)));
+            c.drawBitmap(a.bmp, a.x + a.bmpOffX, a.y + a.bmpOffY, bmpPaint);
+            return;
+        }
+        // 兜底：位图创建失败时仍用 drawText
         int baseR = Color.red(a.color);
         int baseG = Color.green(a.color);
         int baseB = Color.blue(a.color);
-
         if (showOutline) {
             paint.setColor(Color.argb(alpha, 0, 0, 0));
             paint.setStyle(Paint.Style.STROKE);
@@ -462,6 +509,53 @@ public class DanmuView extends View {
         paint.setColor(Color.argb(alpha, baseR, baseG, baseB));
         paint.setStyle(Paint.Style.FILL);
         c.drawText(a.text, a.x, a.y, paint);
+    }
+
+    private int textBitmapPad() {
+        return Math.max(2, (int) (screenDensity * 2));
+    }
+
+    private Bitmap obtainTextBitmap(String text, int color) {
+        if (text == null || text.isEmpty()) return null;
+        String key = color + "|" + text;
+        Bitmap bmp = textCache.get(key);
+        if (bmp != null && !bmp.isRecycled()) return bmp;
+        bmp = buildTextBitmap(text, color);
+        if (bmp != null) textCache.put(key, bmp);
+        return bmp;
+    }
+
+    /** 把带描边的文字预渲染成位图（只在每条弹幕首次出现时执行一次） */
+    private Bitmap buildTextBitmap(String text, int color) {
+        paint.setTextSize(fontSize * screenDensity);
+        paint.setTypeface(Typeface.DEFAULT_BOLD);
+        Paint.FontMetricsInt fm = paint.getFontMetricsInt();
+        int textW = (int) Math.ceil(paint.measureText(text));
+        if (textW <= 0) return null;
+        int pad = textBitmapPad();
+        int bmpW = textW + pad * 2;
+        int bmpH = (fm.descent - fm.ascent) + pad * 2;
+        if (bmpW <= 0 || bmpH <= 0) return null;
+        try {
+            Bitmap bmp = Bitmap.createBitmap(bmpW, bmpH, Bitmap.Config.ARGB_8888);
+            Canvas bmpCanvas = new Canvas(bmp);
+            bmpCanvas.translate(pad, pad - fm.ascent);
+            if (showOutline) {
+                paint.setColor(Color.BLACK);
+                paint.setStyle(Paint.Style.STROKE);
+                paint.setStrokeWidth(0.8f * screenDensity);
+                paint.setStrokeCap(Paint.Cap.ROUND);
+                paint.setStrokeJoin(Paint.Join.ROUND);
+                bmpCanvas.drawText(text, 0, 0, paint);
+            }
+            paint.setColor(color);
+            paint.setStyle(Paint.Style.FILL);
+            bmpCanvas.drawText(text, 0, 0, paint);
+            return bmp;
+        } catch (Throwable t) {
+            Log.w(TAG, "弹幕文字缓存创建失败: " + t.getMessage());
+            return null;
+        }
     }
 
     @Override
@@ -517,7 +611,8 @@ public class DanmuView extends View {
             // 背景
             Paint bgPaint = new Paint();
             bgPaint.setColor(0xDD000000);
-            c.drawRoundRect(bgX, bgY, bgX + bgW, bgY + bgH, 6 * screenDensity, 6 * screenDensity, bgPaint);
+            roundRect.set(bgX, bgY, bgX + bgW, bgY + bgH);
+            c.drawRoundRect(roundRect, 6 * screenDensity, 6 * screenDensity, bgPaint);
 
             // 文字
             Paint infoPaint = new Paint(Paint.ANTI_ALIAS_FLAG);

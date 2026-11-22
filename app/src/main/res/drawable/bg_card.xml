@@ -1,8 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 卡片背景区域 -->
+<!-- 内容卡片（iOS 分组卡片风格） -->
 <shape xmlns:android="http://schemas.android.com/apk/res/android"
     android:shape="rectangle">
-    <solid android:color="@color/bg_card" />
-    <corners android:radius="12dp" />
-    <stroke android:width="1dp" android:color="@color/divider" />
+    <solid android:color="@color/surface_card" />
+    <corners android:radius="16dp" />
 </shape>

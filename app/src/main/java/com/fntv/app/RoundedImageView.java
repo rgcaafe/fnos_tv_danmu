@@ -5,9 +5,9 @@ import android.graphics.Canvas;
 import android.graphics.Path;
 import android.graphics.RectF;
 import android.util.AttributeSet;
-import android.widget.ImageView;
+import androidx.appcompat.widget.AppCompatImageView;
 
-public class RoundedImageView extends ImageView {
+public class RoundedImageView extends AppCompatImageView {
     private float radius = 10;
     private Path clipPath;
     private RectF rect;
@@ -16,11 +16,17 @@ public class RoundedImageView extends ImageView {
     public RoundedImageView(Context c, AttributeSet a) { this(c, a, 0); }
     public RoundedImageView(Context c, AttributeSet a, int defStyle) {
         super(c, a, defStyle);
-        setLayerType(LAYER_TYPE_HARDWARE, null);
+        // 软件层裁剪圆角才有抗锯齿，硬件层会在角上留下黑边
+        setLayerType(LAYER_TYPE_SOFTWARE, null);
     }
 
     public void setCornerRadius(float dp) {
         radius = dp * getResources().getDisplayMetrics().density;
+    }
+
+    /** 直接按像素设置圆角，保证和描边框的圆角完全一致 */
+    public void setCornerRadiusPx(float px) {
+        radius = px;
     }
 
     @Override

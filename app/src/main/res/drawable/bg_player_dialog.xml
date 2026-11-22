@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 播放器弹窗卡片：圆角深色玻璃 -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="#F21A1A1C" />
+    <corners android:radius="20dp" />
+    <stroke
+        android:width="1dp"
+        android:color="#33FFFFFF" />
+</shape>

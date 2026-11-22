@@ -120,20 +120,16 @@ public class EpisodeManager {
             items[i] = "EP" + (ep.episodeNumber > 0 ? ep.episodeNumber : (i + 1))
                     + "  " + (ep.title != null ? ep.title : "");
         }
-        new android.app.AlertDialog.Builder(cb.getContext())
-                .setTitle("选择剧集")
-                .setItems(items, (dialog, which) -> {
-                    if (which >= 0 && which < episodeList.size()) {
-                        PlayListItem s = episodeList.get(which);
-                        currentEpIndex = which;
-                        currentGuid = s.guid;
-                        currentTitle = s.title;
-                        updateNextBtn();
-                        cb.onSwitchEpisode(currentGuid, currentTitle);
-                    }
-                })
-                .setNegativeButton("取消", null)
-                .show();
+        PlayerDialog.list(cb.getContext(), "选择剧集", items, currentEpIndex, which -> {
+            if (which >= 0 && which < episodeList.size()) {
+                PlayListItem s = episodeList.get(which);
+                currentEpIndex = which;
+                currentGuid = s.guid;
+                currentTitle = s.title;
+                updateNextBtn();
+                cb.onSwitchEpisode(currentGuid, currentTitle);
+            }
+        });
     }
 
     /** 重置状态（切换到新剧时调用） */

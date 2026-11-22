@@ -6,6 +6,8 @@ import android.util.Log;
 import android.widget.Button;
 import android.widget.Toast;
 
+import com.fntv.app.ui.CardDialog;
+
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -149,23 +151,18 @@ public class UpdateManager {
     private void showUpdateDialog(final String title, final String changelog,
                                    final boolean forceUpdate, final String apkUrl,
                                    final int remoteVersion, final boolean isTestInstall) {
-        new android.app.AlertDialog.Builder(activity)
-                .setTitle(title)
-                .setMessage(changelog)
-                .setCancelable(!forceUpdate)
-                .setPositiveButton(isTestInstall ? "测试安装器" : "立即更新", (dialog, which) -> {
-                    dialog.dismiss();
-                    downloadAndInstall(apkUrl, remoteVersion, isTestInstall);
-                })
-                .setNegativeButton(forceUpdate ? "退出应用" : "稍后再说", (dialog, which) -> {
+        CardDialog.message(activity, title, changelog,
+                isTestInstall ? "测试安装器" : "立即更新",
+                () -> downloadAndInstall(apkUrl, remoteVersion, isTestInstall),
+                forceUpdate ? "退出应用" : "稍后再说",
+                () -> {
                     if (forceUpdate) {
                         activity.finishAffinity();
                     } else {
-                        dialog.dismiss();
                         resetBtn();
                     }
-                })
-                .show();
+                },
+                !forceUpdate);
     }
 
     // ========== 下载 ==========
@@ -333,20 +330,15 @@ public class UpdateManager {
             final String msg = "安装器不可用，APK 已复制到：\n" + targetFile.getAbsolutePath()
                     + "\n请用文件管理器打开此文件进行安装。";
             Log.w(TAG, msg);
-            activity.runOnUiThread(() -> new android.app.AlertDialog.Builder(activity)
-                    .setTitle("安装失败")
-                    .setMessage(msg)
-                    .setPositiveButton("我知道了", (d, w) -> resetBtn())
-                    .show());
+            activity.runOnUiThread(() -> CardDialog.message(activity, "安装失败", msg,
+                    "我知道了", this::resetBtn, null, null));
         } catch (Exception copyErr) {
             Log.e(TAG, "复制失败", copyErr);
             activity.runOnUiThread(() -> {
                 String errMsg = originalError != null ? "安装失败: " + originalError.getMessage() : "安装器不可用";
-                new android.app.AlertDialog.Builder(activity)
-                        .setTitle("安装失败")
-                        .setMessage(errMsg + "\nAPK 位置：\n" + apkFile.getAbsolutePath())
-                        .setPositiveButton("我知道了", (d, w) -> resetBtn())
-                        .show();
+                CardDialog.message(activity, "安装失败",
+                        errMsg + "\nAPK 位置：\n" + apkFile.getAbsolutePath(),
+                        "我知道了", this::resetBtn, null, null);
             });
         }
     }

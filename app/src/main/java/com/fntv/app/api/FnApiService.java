@@ -40,9 +40,28 @@ public interface FnApiService {
     @GET("api/v1/mediadb/sum")
     Call<ApiResponse<Map<String, Integer>>> getMediaDbSum();
 
+    // ========== 收藏 ==========
+    @POST("api/v1/favorite/list")
+    Call<ApiResponse<ItemListResponse>> getFavoriteList(@Body Object req);
+
+    @PUT("api/v1/item/favorite")
+    Call<ApiResponse<Boolean>> addFavorite(@Body Map<String, Object> req);
+
+    @HTTP(method = "DELETE", path = "api/v1/item/favorite", hasBody = true)
+    Call<ApiResponse<Boolean>> removeFavorite(@Body Map<String, Object> req);
+
     // ========== 媒体浏览 ==========
     @POST("api/v1/item/list")
     Call<ApiResponse<ItemListResponse>> getItemList(@Body ItemListRequest req);
+
+    @GET("api/v1/item/{guid}")
+    Call<ApiResponse<ItemDetail>> getItem(@Path("guid") String guid);
+
+    @GET("api/v1/tag/genres")
+    Call<ApiResponse<List<TagItem>>> getGenreTags(@Query("lan") String lan);
+
+    @GET("api/v1/tag/iso3166")
+    Call<ApiResponse<List<TagItem>>> getCountryTags(@Query("lan") String lan);
 
     @GET("api/v1/episode/list/{id}")
     Call<ApiResponse<List<PlayListItem>>> getEpisodeList(@Path("id") String id);

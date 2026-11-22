@@ -15,6 +15,17 @@ public class PlayListItem {
 
     public String poster;
 
+    @SerializedName("poster_width")
+    public int posterWidth;
+
+    @SerializedName("poster_height")
+    public int posterHeight;
+
+    /** 横幅剧照（剧集 / 视频），卡片按 16:9 排；海报则是 2:3 */
+    public boolean isWideArtwork() {
+        return posterHeight > 0 && posterWidth > posterHeight;
+    }
+
     @SerializedName("tv_title")
     public String tvTitle;
 

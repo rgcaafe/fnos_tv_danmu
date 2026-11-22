@@ -55,7 +55,8 @@
         android:layout_width="match_parent"
         android:layout_height="40dp"
         android:layout_marginTop="12dp"
-        android:background="@drawable/bg_chip"
+        android:background="@drawable/bg_player_dialog_chip"
+        android:backgroundTint="@null"
         android:text="关闭"
         android:textColor="#999"
         android:focusable="true" />

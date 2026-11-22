@@ -1,29 +1,40 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- 主按钮 -->
 <selector xmlns:android="http://schemas.android.com/apk/res/android">
-    <item android:state_pressed="true" android:state_focused="true">
-        <shape android:shape="rectangle">
-            <solid android:color="#FF2856C4" />
-            <corners android:radius="10dp" />
-            <stroke android:width="2dp" android:color="#FF3370FF" />
-        </shape>
-    </item>
     <item android:state_focused="true">
         <shape android:shape="rectangle">
-            <solid android:color="#FF3370FF" />
-            <corners android:radius="10dp" />
-            <stroke android:width="2dp" android:color="#FF5599FF" />
+            <gradient
+                android:angle="0"
+                android:endColor="#FF8A7BFF"
+                android:startColor="#FF4F93FF" />
+            <corners android:radius="12dp" />
+            <stroke
+                android:width="2dp"
+                android:color="#FFD6E4FF" />
         </shape>
     </item>
     <item android:state_pressed="true">
         <shape android:shape="rectangle">
-            <solid android:color="#FF2856C4" />
-            <corners android:radius="10dp" />
+            <gradient
+                android:angle="0"
+                android:endColor="#FF4E42C9"
+                android:startColor="#FF2456C0" />
+            <corners android:radius="12dp" />
+        </shape>
+    </item>
+    <item android:state_enabled="false">
+        <shape android:shape="rectangle">
+            <solid android:color="#FF232C39" />
+            <corners android:radius="12dp" />
         </shape>
     </item>
     <item>
         <shape android:shape="rectangle">
-            <solid android:color="#FF3370FF" />
-            <corners android:radius="10dp" />
+            <gradient
+                android:angle="0"
+                android:endColor="#FF6A5BFF"
+                android:startColor="#FF2E7BFF" />
+            <corners android:radius="12dp" />
         </shape>
     </item>
 </selector>

@@ -1,5 +1,59 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- 用于 ScrollView 内容最小高度，实现居中效果 -->
-    <dimen name="min_height_fill">480dp</dimen>
+    <dimen name="min_height_fill">560dp</dimen>
+
+    <!-- 布局骨架（竖屏手机） -->
+    <dimen name="screen_pad">20dp</dimen>
+    <dimen name="top_bar_height">48dp</dimen>
+    <dimen name="nav_bar_height">58dp</dimen>
+    <dimen name="nav_rail_width">92dp</dimen>
+    <dimen name="nav_item_rail_height">78dp</dimen>
+    <dimen name="section_gap">26dp</dimen>
+    <dimen name="login_card_max_width">440dp</dimen>
+
+    <!-- 左侧图标导航 -->
+    <dimen name="rail_width">52dp</dimen>
+    <dimen name="rail_icon">21dp</dimen>
+    <dimen name="rail_item_height">44dp</dimen>
+    <dimen name="rail_gap">16dp</dimen>
+
+    <!-- 竖屏底部图标导航 -->
+    <dimen name="nav_bottom_height">56dp</dimen>
+
+    <!-- 大图推荐位 -->
+    <dimen name="hero_pad">16dp</dimen>
+    <dimen name="hero_title_size">34sp</dimen>
+    <dimen name="hero_eyebrow_size">11sp</dimen>
+    <dimen name="hero_meta_size">11sp</dimen>
+    <dimen name="hero_overview_size">14sp</dimen>
+    <dimen name="hero_play_height">46dp</dimen>
+    <dimen name="hero_action_size">13sp</dimen>
+    <dimen name="hero_action_icon">18dp</dimen>
+    <dimen name="billboard_pad">16dp</dimen>
+    <dimen name="billboard_title_size">34sp</dimen>
+    <dimen name="billboard_meta_size">13sp</dimen>
+    <dimen name="billboard_btn_height">44dp</dimen>
+
+    <!-- 横向行 -->
+    <dimen name="row_title_size">15sp</dimen>
+    <dimen name="row_title_top">36dp</dimen>
+    <dimen name="row_title_bottom">8dp</dimen>
+    <dimen name="row_gap">28dp</dimen>
+
+    <!-- 卡片 / 图片 -->
+    <dimen name="poster_width">128dp</dimen>
+    <dimen name="poster_height">192dp</dimen>
+    <dimen name="continue_width">238dp</dimen>
+    <dimen name="continue_height">134dp</dimen>
+    <dimen name="live_width">212dp</dimen>
+    <dimen name="live_height">119dp</dimen>
+    <dimen name="grid_min_width">104dp</dimen>
+    <dimen name="hero_ratio_min_height">200dp</dimen>
+
+    <!-- 字号 -->
+    <dimen name="large_title_size">32sp</dimen>
+    <dimen name="section_title_size">20sp</dimen>
+    <dimen name="card_title_size">12sp</dimen>
+    <dimen name="body_size">16sp</dimen>
+    <dimen name="caption_size">12sp</dimen>
 </resources>

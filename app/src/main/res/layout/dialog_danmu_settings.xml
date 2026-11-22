@@ -2,20 +2,21 @@
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:background="#FF1A1A1A">
+    android:background="@drawable/bg_player_dialog"
+    android:clipToPadding="false">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="16dp">
+        android:padding="20dp">
 
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="弹幕设置"
-            android:textColor="#FFF"
-            android:textSize="18sp"
+            android:textColor="#FFFFFFFF"
+            android:textSize="20sp"
             android:textStyle="bold"
             android:paddingBottom="12dp" />
 
@@ -136,33 +137,35 @@
         <View
             android:layout_width="match_parent"
             android:layout_height="1dp"
-            android:background="#333"
+            android:background="#26FFFFFF"
             android:layout_marginTop="8dp"
             android:layout_marginBottom="8dp" />
 
         <Button
             android:id="@+id/dm_matchBtn"
             android:layout_width="match_parent"
-            android:layout_height="40dp"
-            android:background="@drawable/bg_chip"
+            android:layout_height="42dp"
+            android:background="@drawable/bg_player_dialog_chip"
+            android:backgroundTint="@null"
             android:text="手动匹配弹幕"
-            android:textColor="#FFF"
+            android:textColor="#FFFFFFFF"
             android:focusable="true" />
 
         <Button
             android:id="@+id/dm_listBtn"
             android:layout_width="match_parent"
-            android:layout_height="40dp"
-            android:background="@drawable/bg_chip"
+            android:layout_height="42dp"
+            android:background="@drawable/bg_player_dialog_chip"
+            android:backgroundTint="@null"
             android:text="弹幕列表"
-            android:textColor="#FFF"
+            android:textColor="#FFFFFFFF"
             android:focusable="true"
             android:layout_marginTop="8dp" />
 
         <View
             android:layout_width="match_parent"
             android:layout_height="1dp"
-            android:background="#333"
+            android:background="#26FFFFFF"
             android:layout_marginTop="8dp"
             android:layout_marginBottom="8dp" />
 
@@ -171,26 +174,30 @@
         <include layout="@layout/item_danmu_slider" android:id="@+id/dm_opacity" />
         <include layout="@layout/item_danmu_slider" android:id="@+id/dm_fontsize" />
 
-        <TextView
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="文字描边"
-            android:textColor="#EEE"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
             android:paddingTop="8dp"
-            android:paddingBottom="4dp"
-            android:focusable="true"
-            android:nextFocusDown="@+id/dm_outline" />
+            android:paddingBottom="8dp">
 
-        <Switch
-            android:id="@+id/dm_outline"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="end"
-            android:focusable="true"
-            android:clickable="true"
-            android:nextFocusUp="@+id/dm_outline"
-            android:nextFocusDown="@+id/dm_density"
-            android:layout_marginBottom="8dp" />
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="文字描边"
+                android:textColor="#EEE" />
+
+            <Switch
+                android:id="@+id/dm_outline"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:focusable="true"
+                android:clickable="true"
+                android:nextFocusUp="@+id/dm_outline"
+                android:nextFocusDown="@+id/dm_density" />
+        </LinearLayout>
 
         <include layout="@layout/item_danmu_slider" android:id="@+id/dm_density" />
         <include layout="@layout/item_danmu_slider" android:id="@+id/dm_maxactive" />
@@ -198,26 +205,30 @@
         <include layout="@layout/item_danmu_slider" android:id="@+id/dm_offset" />
         <include layout="@layout/item_danmu_slider" android:id="@+id/dm_maxcomments" />
 
-        <TextView
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="自定义刷新率"
-            android:textColor="#EEE"
-            android:paddingTop="4dp"
-            android:paddingBottom="4dp"
-            android:focusable="true"
-            android:nextFocusDown="@+id/dm_custom_fps" />
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingTop="8dp"
+            android:paddingBottom="8dp">
 
-        <Switch
-            android:id="@+id/dm_custom_fps"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="end"
-            android:focusable="true"
-            android:clickable="true"
-            android:nextFocusUp="@+id/dm_custom_fps"
-            android:nextFocusDown="@+id/dm_fps"
-            android:layout_marginBottom="8dp" />
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="自定义刷新率"
+                android:textColor="#EEE" />
+
+            <Switch
+                android:id="@+id/dm_custom_fps"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:focusable="true"
+                android:clickable="true"
+                android:nextFocusUp="@+id/dm_custom_fps"
+                android:nextFocusDown="@+id/dm_fps" />
+        </LinearLayout>
 
         <include layout="@layout/item_danmu_slider" android:id="@+id/dm_fps" />
 
@@ -231,23 +242,25 @@
             <Button
                 android:id="@+id/dm_cancel"
                 android:layout_width="0dp"
-                android:layout_height="40dp"
+                android:layout_height="42dp"
                 android:layout_weight="1"
-                android:layout_marginRight="6dp"
-                android:background="@drawable/bg_chip"
+                android:layout_marginRight="8dp"
+                android:background="@drawable/bg_player_dialog_chip"
+                android:backgroundTint="@null"
                 android:text="取消"
-                android:textColor="#999"
+                android:textColor="#CCCCCC"
                 android:focusable="true" />
 
             <Button
                 android:id="@+id/dm_ok"
                 android:layout_width="0dp"
-                android:layout_height="40dp"
+                android:layout_height="42dp"
                 android:layout_weight="1"
-                android:layout_marginLeft="6dp"
-                android:background="@drawable/bg_chip"
+                android:background="@drawable/bg_player_primary"
+                android:backgroundTint="@null"
                 android:text="确定"
-                android:textColor="#FFF"
+                android:textColor="#FFFFFFFF"
+                android:textStyle="bold"
                 android:focusable="true" />
 
         </LinearLayout>

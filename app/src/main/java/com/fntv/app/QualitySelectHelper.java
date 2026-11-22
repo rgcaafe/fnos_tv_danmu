@@ -1,7 +1,6 @@
 package com.fntv.app;
 
 import android.app.Activity;
-import android.app.AlertDialog;
 import android.content.SharedPreferences;
 import android.util.Log;
 
@@ -103,11 +102,7 @@ public class QualitySelectHelper {
                         || response.body().data.qualities.isEmpty()) {
                     Log.w(TAG, "画质列表为空");
                     if (activity != null && !activity.isFinishing()) {
-                        new AlertDialog.Builder(activity)
-                                .setTitle("画质选择")
-                                .setMessage("无可用画质")
-                                .setPositiveButton("关闭", null)
-                                .show();
+                        PlayerDialog.message(activity, "画质选择", "无可用画质");
                     }
                     return;
                 }
@@ -178,26 +173,20 @@ public class QualitySelectHelper {
 
         final String[] items = new String[options.size()];
         for (int i = 0; i < options.size(); i++) {
-            QualityOption opt = options.get(i);
-            String check = (i == selectedIndex) ? " ✓" : "";
-            items[i] = opt.label + check;
+            items[i] = options.get(i).label;
         }
 
-        new AlertDialog.Builder(activity)
-                .setTitle("画质选择")
-                .setItems(items, (dialog, which) -> {
-                    if (which < 0 || which >= options.size() || which == selectedIndex) return;
-                    selectedIndex = which;
-                    QualityOption selected = options.get(which);
-                    prefs.edit().putInt("stream_quality_idx_" + qCallback.getMediaGuid(), selectedIndex).apply();
-                    if (selected.isOriginal) {
-                        qCallback.onQualityChanged(which);
-                    } else {
-                        switchToQuality(selected);
-                    }
-                })
-                .setNegativeButton("关闭", null)
-                .show();
+        PlayerDialog.list(activity, "画质选择", items, selectedIndex, which -> {
+            if (which < 0 || which >= options.size() || which == selectedIndex) return;
+            selectedIndex = which;
+            QualityOption selected = options.get(which);
+            prefs.edit().putInt("stream_quality_idx_" + qCallback.getMediaGuid(), selectedIndex).apply();
+            if (selected.isOriginal) {
+                qCallback.onQualityChanged(which);
+            } else {
+                switchToQuality(selected);
+            }
+        });
     }
 
     /** 非原画：调 play/play 获取新链接后切换 */

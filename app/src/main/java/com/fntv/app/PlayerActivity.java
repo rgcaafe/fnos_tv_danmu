@@ -20,6 +20,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import android.content.pm.ActivityInfo;
 import com.fntv.app.api.FnApiManager;
 import com.fntv.app.api.model.*;
+import com.fntv.app.ui.Ui;
 import com.google.android.exoplayer2.*;
 import com.google.android.exoplayer2.source.ProgressiveMediaSource;
 import com.google.android.exoplayer2.source.DefaultMediaSourceFactory;
@@ -38,14 +39,18 @@ public class PlayerActivity extends AppCompatActivity {
     private SimpleExoPlayer player;
     private TextView tvBuffering, tvTime, infoText;
     private SeekBar seekBar;
-    private Button btnPlayPause, btnRewind, btnForward, btnSpeed, btnRatio, btnInfo, btnCloseInfo, btnEpisodeList, btnNextEp, btnBack, btnDanmu, btnHdrToggle, btnQuality;
+    private Button btnRewind, btnForward, btnSpeed, btnRatio, btnInfo, btnCloseInfo, btnEpisodeList, btnNextEp, btnDanmu, btnHdrToggle, btnQuality;
+    private View btnPlayPause;
+    private ImageView ivPlayPause;
+    private TextView tvPlayPause;
+    private android.widget.ImageView btnBack;
     private ImageView btnLock;
     private TextView tvTitle, tvDanmuStatus, tvDanmuMatch, tvSpeedHint, infoTextAudio, infoTextExtra;
     private Button btnCloudMode, btnBrightness, btnSkip;
     private boolean introSkipped = false, outroSkipped = false;
     private float speedBeforeLongPress = 1.0f;
     private DanmuView danmuView;
-    private View controller, infoPanel, topBar;
+    private View controller, infoPanel, topBar, topScrim, bottomScrim;
     private boolean isLocked = false;
     private DanmuManager danmuManager;
     private QualitySelectHelper qualityHelper;
@@ -107,6 +112,7 @@ public class PlayerActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_player);
+        Ui.noTintAll(getWindow().getDecorView());
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             getWindow().setStatusBarColor(Color.BLACK);
             getWindow().setNavigationBarColor(Color.BLACK);
@@ -131,6 +137,8 @@ public class PlayerActivity extends AppCompatActivity {
         tvTime = findViewById(R.id.tvTime);
         seekBar = findViewById(R.id.seekBar);
         btnPlayPause = findViewById(R.id.btnPlayPause);
+        ivPlayPause = findViewById(R.id.ivPlayPause);
+        tvPlayPause = findViewById(R.id.tvPlayPause);
         btnRewind = findViewById(R.id.btnRewind);
         btnForward = findViewById(R.id.btnForward);
         btnSpeed = findViewById(R.id.btnSpeed);
@@ -150,6 +158,20 @@ public class PlayerActivity extends AppCompatActivity {
         tvDanmuMatch = findViewById(R.id.tvDanmuMatch);
         tvSpeedHint = findViewById(R.id.tvSpeedHint);
         topBar = findViewById(R.id.topBar);
+        topScrim = findViewById(R.id.topScrim);
+        bottomScrim = findViewById(R.id.bottomScrim);
+        // 顶栏整体下移到状态栏下方，内部固定高度保证标题和返回键完整居中
+        int statusBar = Ui.statusBarHeight(this);
+        ViewGroup.LayoutParams topLp = topBar.getLayoutParams();
+        topLp.height = Ui.dp(this, 56);
+        if (topLp instanceof ViewGroup.MarginLayoutParams) {
+            ((ViewGroup.MarginLayoutParams) topLp).topMargin = statusBar;
+        }
+        topBar.setLayoutParams(topLp);
+        topBar.bringToFront();
+        btnBack.setColorFilter(Color.WHITE);
+        btnCloudMode = findViewById(R.id.btnCloudMode);
+        btnCloudMode.setSingleLine(true);
         controller = findViewById(R.id.controller);
         controller.setOnTouchListener((v, e) -> true);
         topBar.setOnTouchListener((v, e) -> true);
@@ -332,6 +354,8 @@ public class PlayerActivity extends AppCompatActivity {
                 topBar.setVisibility(View.INVISIBLE);
                 controller.setVisibility(View.INVISIBLE);
                 btnLock.setVisibility(View.INVISIBLE);
+                if (topScrim != null) topScrim.setVisibility(View.INVISIBLE);
+                if (bottomScrim != null) bottomScrim.setVisibility(View.INVISIBLE);
             } else {
                 showCtrl(true);
                 // 解锁后焦点还给视频区域
@@ -408,13 +432,6 @@ public class PlayerActivity extends AppCompatActivity {
             }
             @Override public void probeWithMediaExtractor() { PlayerActivity.this.probeWithMediaExtractor(); }
             @Override public void onCloudBtnVisibilityChanged(boolean vis) {
-                if (tvDanmuMatch != null) {
-                    ViewGroup.MarginLayoutParams lp = (ViewGroup.MarginLayoutParams) tvDanmuMatch.getLayoutParams();
-                    if (lp != null) {
-                        lp.rightMargin = vis ? (int) (100 * getResources().getDisplayMetrics().density) : 20;
-                        tvDanmuMatch.setLayoutParams(lp);
-                    }
-                }
                 // 直链/STRM 按钮显示时，隐藏画质按钮
                 if (vis && btnQuality != null) btnQuality.setVisibility(View.GONE);
             }
@@ -483,7 +500,6 @@ public class PlayerActivity extends AppCompatActivity {
 
         showCtrl(true);
         loadPlayInfo();
-        setRequestedOrientation(android.content.pm.ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
         hideSystemUi();
 
         // 控制栏隐藏时的进度时间浮层
@@ -575,7 +591,7 @@ public class PlayerActivity extends AppCompatActivity {
                     if (!seeked && seekTs > 0) { player.seekTo(seekTs); seeked = true; }
                     startSave(); updateTime();
                     if (firstReady) { saveProgress(); showCtrl(true); firstReady = false; }
-                    btnPlayPause.setText(player.isPlaying() ? "暂停" : "播放");
+                    updatePlayPauseText();
                     if (danmuManager != null) danmuManager.onPlayerReady();
                     // HDR 检测（延时等格式就绪）
                     checkHdr();
@@ -740,6 +756,10 @@ public class PlayerActivity extends AppCompatActivity {
     /** 开始播放（加载到 ExoPlayer） */
     private void startPlayback() {
         if (mediaGuid == null) return;
+        // 页面已经销毁/正在退出时，直链回调可能才到，此时不要再重建播放器
+        if (isFinishing() || isDestroyed()) return;
+        if (player == null) initPlayer();
+        if (player == null) return;
         OkHttpExoDataSource.resetLoadedBytes();
         CloudStreamManager.PlaybackConfig cfg = cloudStreamManager.getPlaybackConfig(baseUrl, mediaGuid);
         OkHttpExoDataSource.setChunkedMode(cfg.chunkedModeSize);
@@ -830,7 +850,7 @@ public class PlayerActivity extends AppCompatActivity {
                 if (s == Player.STATE_READY) {
                     if (!seeked && seekTs > 0) { player.seekTo(seekTs); seeked = true; }
                     if (firstReady) { showCtrl(true); firstReady = false; }
-                    btnPlayPause.setText(player.isPlaying() ? "暂停" : "播放");
+                    updatePlayPauseText();
                 } else if (s == Player.STATE_ENDED) {
                     if (episodeManager != null && episodeManager.hasNext()) episodeManager.playNext();
                 }
@@ -873,13 +893,23 @@ public class PlayerActivity extends AppCompatActivity {
         if (player == null) return;
         if (player.isPlaying()) {
             player.pause();
-            btnPlayPause.setText("播放");
+            updatePlayPauseText();
             if (danmuManager != null) danmuManager.onPlayerPause();
         } else {
             player.play();
-            btnPlayPause.setText("暂停");
+            updatePlayPauseText();
             updateTime();
             if (danmuManager != null) danmuManager.onPlayerReady();
+        }
+    }
+
+    /** 播放/暂停按钮文案（和整体设计语言一致：图标 + 文字） */
+    private void updatePlayPauseText() {
+        if (btnPlayPause == null) return;
+        boolean playing = player != null && player.isPlaying();
+        if (tvPlayPause != null) tvPlayPause.setText(playing ? "暂停" : "播放");
+        if (ivPlayPause != null) {
+            ivPlayPause.setImageResource(playing ? R.drawable.ic_pause : R.drawable.ic_play);
         }
     }
 
@@ -966,7 +996,11 @@ public class PlayerActivity extends AppCompatActivity {
 
         final android.app.Dialog dialog = new android.app.Dialog(this, android.R.style.Theme_DeviceDefault_Dialog_NoActionBar);
         dialog.setContentView(R.layout.dialog_skip);
-        dialog.getWindow().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(0xDD1A1A1A));
+        dialog.getWindow().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(0));
+        int dialogW = Math.min(getResources().getDisplayMetrics().widthPixels - Ui.dp(this, 80),
+                Ui.dp(this, 480));
+        dialog.getWindow().setLayout(Math.max(Ui.dp(this, 260), dialogW),
+                ViewGroup.LayoutParams.WRAP_CONTENT);
 
         // 标题
         TextView tvTitle = dialog.findViewById(R.id.tv_skip_title);
@@ -1010,6 +1044,9 @@ public class PlayerActivity extends AppCompatActivity {
         Button reset = dialog.findViewById(R.id.dm_reset);
         Button cancel = dialog.findViewById(R.id.dm_cancel);
         Button ok = dialog.findViewById(R.id.dm_ok);
+        PlayerDialog.styleButton(reset, false);
+        PlayerDialog.styleButton(cancel, false);
+        PlayerDialog.styleButton(ok, true);
 
         if (reset != null) reset.setOnClickListener(v -> { if (introSb != null) introSb.setProgress(0); if (outroSb != null) outroSb.setProgress(0); });
         if (cancel != null) cancel.setOnClickListener(v -> dialog.dismiss());
@@ -1050,6 +1087,9 @@ public class PlayerActivity extends AppCompatActivity {
         final Button cancel = dialog.findViewById(R.id.dm_cancel);
         final Button ok = dialog.findViewById(R.id.dm_ok);
         final Button reset = dialog.findViewById(R.id.dm_reset);
+        PlayerDialog.styleButton(cancel, false);
+        PlayerDialog.styleButton(ok, true);
+        PlayerDialog.styleButton(reset, false);
 
         if (label != null) label.setText("亮度: " + (brightness - 100) + "%");
         if (sb != null) {
@@ -1107,7 +1147,7 @@ public class PlayerActivity extends AppCompatActivity {
             getWindow().setColorMode(ActivityInfo.COLOR_MODE_HDR);
             danmuManager.showDanmuStatus("HDR 已开启");
         } else {
-            getWindow().setColorMode(0);
+            getWindow().setColorMode(ActivityInfo.COLOR_MODE_DEFAULT);
             if (videoHdr) danmuManager.showDanmuStatus("HDR 已关闭");
         }
     }
@@ -1226,6 +1266,9 @@ public class PlayerActivity extends AppCompatActivity {
         topBar.setVisibility(show ? View.VISIBLE : View.INVISIBLE);
         btnLock.setVisibility(show ? View.VISIBLE : View.INVISIBLE);
         btnDanmu.setVisibility(show ? View.VISIBLE : View.INVISIBLE);
+        // 上下渐变遮罩跟随控制栏一起显示/隐藏，避免隐藏后画面上下发黑
+        if (topScrim != null) topScrim.setVisibility(show ? View.VISIBLE : View.INVISIBLE);
+        if (bottomScrim != null) bottomScrim.setVisibility(show ? View.VISIBLE : View.INVISIBLE);
         if (show) {
             updateTitle();
             resetHideTimer();
@@ -1631,10 +1674,11 @@ public class PlayerActivity extends AppCompatActivity {
     }
 
     private void restoreOrientation() {
+        // 播放页在清单里已经固定为横屏，不再在运行期改方向：
+        // 用户用遥控器/系统锁了竖屏时，运行期请求横屏会触发重建，播放器被释放后
+        // 还在路上的直链回调会拿到 null player 而崩溃。
         if (isTvDevice()) {
             setRequestedOrientation(android.content.pm.ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
-        } else {
-            setRequestedOrientation(android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT);
         }
     }
 

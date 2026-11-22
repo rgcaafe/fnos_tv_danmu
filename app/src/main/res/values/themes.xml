@@ -1,29 +1,108 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:tools="http://schemas.android.com/tools">
     <!--
-    深灰色主题，无 ActionBar。
-    使用 Theme.AppCompat.NoActionBar 作为父主题，
-    兼容 Android 4.4 (API 19)。
+      Apple 风格 Material DayNight 主题：
+      - 浅色 / 深色由 values-night 自动切换
+      - 所有颜色走语义色（surface / label / accent ...）
     -->
-    <style name="Theme.FntvApp" parent="Theme.AppCompat.NoActionBar">
-        <!-- 主色 -->
-        <item name="colorPrimary">@color/colorPrimary</item>
-        <item name="colorPrimaryDark">@color/colorPrimaryDark</item>
-        <item name="colorAccent">@color/colorAccent</item>
+    <style name="Theme.FntvApp" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/accent</item>
+        <item name="colorPrimaryVariant">@color/accent</item>
+        <item name="colorOnPrimary">@color/text_on_accent</item>
+        <item name="colorSecondary">@color/accent</item>
+        <item name="colorSecondaryVariant">@color/accent</item>
+        <item name="colorOnSecondary">@color/text_on_accent</item>
+        <item name="colorSurface">@color/surface_card</item>
+        <item name="colorOnSurface">@color/label</item>
+        <item name="colorOnBackground">@color/label</item>
+        <item name="colorError">@color/danger</item>
+        <item name="colorOnError">#FFFFFFFF</item>
 
-        <!-- 窗口背景 -->
-        <item name="android:windowBackground">@color/bg_dark</item>
+        <item name="android:windowBackground">@color/surface_grouped</item>
+        <item name="android:textColorPrimary">@color/label</item>
+        <item name="android:textColorSecondary">@color/label_2</item>
+        <item name="android:textColorHint">@color/label_3</item>
+        <item name="android:statusBarColor" tools:targetApi="21">@android:color/transparent</item>
+        <item name="android:navigationBarColor" tools:targetApi="21">@color/surface_grouped</item>
+        <item name="android:windowLightStatusBar" tools:targetApi="23">true</item>
+        <item name="android:windowLightNavigationBar" tools:targetApi="27">true</item>
+        <item name="android:windowActionModeOverlay">true</item>
+        <item name="buttonStyle">@style/Widget.Fntv.Button</item>
 
-        <!-- 让 Dialog / Popup 也用深色 -->
-        <item name="android:alertDialogTheme">@style/DarkDialog</item>
+        <item name="materialAlertDialogTheme">@style/Fntv.AlertDialog</item>
+        <item name="android:alertDialogTheme">@style/Fntv.AlertDialog</item>
+        <item name="android:datePickerDialogTheme" tools:targetApi="21">@style/Fntv.AlertDialog</item>
+        <item name="android:timePickerDialogTheme" tools:targetApi="21">@style/Fntv.AlertDialog</item>
     </style>
 
-    <!-- 深色对话框主题 -->
-    <style name="DarkDialog" parent="Theme.AppCompat.Dialog">
-        <item name="android:windowBackground">@color/bg_card</item>
-        <item name="colorAccent">@color/colorAccent</item>
-        <item name="android:textColorPrimary">@color/text_primary</item>
+    <style name="Fntv.AlertDialog" parent="ThemeOverlay.MaterialComponents.MaterialAlertDialog">
+        <item name="colorPrimary">@color/accent</item>
+        <item name="colorSurface">@color/surface_elevated</item>
+        <item name="colorOnSurface">@color/label</item>
+        <item name="android:textColorPrimary">@color/label</item>
+        <item name="android:textColorSecondary">@color/label_2</item>
     </style>
 
-    <!-- 遥控器焦点高亮：配合 ?attr/selectableItemBackground 默认有涟漪/高亮 -->
+    <!-- 文本 -->
+    <style name="Text.Fntv.LargeTitle" parent="">
+        <item name="android:textSize">31sp</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:textColor">@color/label</item>
+        <item name="android:includeFontPadding">false</item>
+    </style>
+
+    <style name="Text.Fntv.Title" parent="">
+        <item name="android:textSize">20sp</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:textColor">@color/label</item>
+        <item name="android:includeFontPadding">false</item>
+    </style>
+
+    <style name="Text.Fntv.Headline" parent="">
+        <item name="android:textSize">17sp</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:textColor">@color/label</item>
+        <item name="android:includeFontPadding">false</item>
+    </style>
+
+    <style name="Text.Fntv.Body" parent="">
+        <item name="android:textSize">16sp</item>
+        <item name="android:textColor">@color/label</item>
+        <item name="android:includeFontPadding">false</item>
+    </style>
+
+    <style name="Text.Fntv.Subhead" parent="">
+        <item name="android:textSize">14sp</item>
+        <item name="android:textColor">@color/label_2</item>
+        <item name="android:includeFontPadding">false</item>
+    </style>
+
+    <style name="Text.Fntv.Caption" parent="">
+        <item name="android:textSize">12sp</item>
+        <item name="android:textColor">@color/label_3</item>
+        <item name="android:includeFontPadding">false</item>
+    </style>
+
+    <!-- 列表行 -->
+    <style name="Widget.Fntv.Row" parent="">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">52dp</item>
+        <item name="android:orientation">horizontal</item>
+        <item name="android:gravity">center_vertical</item>
+        <item name="android:background">@drawable/bg_row</item>
+        <item name="android:focusable">true</item>
+        <item name="android:clickable">true</item>
+        <item name="android:paddingLeft">16dp</item>
+        <item name="android:paddingRight">16dp</item>
+    </style>
+
+    <!-- 按钮：不使用 Material 的默认着色，背景由各控件自行指定 -->
+    <style name="Widget.Fntv.Button" parent="Widget.AppCompat.Button">
+        <item name="android:background">@null</item>
+        <item name="android:backgroundTint" tools:targetApi="21">@null</item>
+        <item name="android:textAllCaps">false</item>
+        <item name="android:minWidth">0dp</item>
+        <item name="android:minHeight">0dp</item>
+        <item name="android:stateListAnimator" tools:targetApi="21">@null</item>
+    </style>
 </resources>

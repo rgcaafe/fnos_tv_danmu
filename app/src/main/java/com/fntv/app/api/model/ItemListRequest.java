@@ -21,6 +21,10 @@ public class ItemListRequest {
     @SerializedName("ancestor_guid")
     public String ancestorGuid;
 
+    /** 文件夹内容：按父级 guid 查询（ancestor_guid 对文件夹无效） */
+    @SerializedName("parent_guid")
+    public String parentGuid;
+
     public Tags tags;
 
     @SerializedName("exclude_grouped_video")
@@ -78,6 +82,16 @@ public class ItemListRequest {
         return new ItemListRequest(ancestorGuid,
                 Arrays.asList("Movie", "TV", "Directory", "Video", "Episode"),
                 false, "sort_title", "ASC", 100);
+    }
+
+    /** 文件夹里的内容（服务端只认 parent_guid） */
+    public static ItemListRequest folderChildren(String parentGuid, String sortColumn,
+                                                 String sortType, int pageSize) {
+        ItemListRequest req = new ItemListRequest(null,
+                Arrays.asList("Movie", "TV", "Directory", "Video"),
+                false, sortColumn, sortType, pageSize);
+        req.parentGuid = parentGuid;
+        return req;
     }
 
     /** 直播频道列表（不设 ancestor_guid / exclude_grouped_video） */

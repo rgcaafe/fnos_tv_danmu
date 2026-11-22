@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 平板 / 电视 -->
+    <dimen name="screen_pad">36dp</dimen>
+    <dimen name="top_bar_height">64dp</dimen>
+    <dimen name="nav_bar_height">64dp</dimen>
+    <dimen name="nav_rail_width">120dp</dimen>
+    <dimen name="nav_item_rail_height">96dp</dimen>
+    <dimen name="section_gap">34dp</dimen>
+
+    <!-- 左侧图标导航 -->
+    <dimen name="rail_width">84dp</dimen>
+    <dimen name="rail_icon">29dp</dimen>
+    <dimen name="rail_item_height">52dp</dimen>
+    <dimen name="rail_gap">12dp</dimen>
+
+    <!-- 大图推荐位 -->
+    <dimen name="hero_pad">34dp</dimen>
+    <dimen name="hero_title_size">44sp</dimen>
+    <dimen name="hero_eyebrow_size">13sp</dimen>
+    <dimen name="hero_meta_size">12sp</dimen>
+    <dimen name="hero_overview_size">15sp</dimen>
+    <dimen name="hero_play_height">54dp</dimen>
+    <dimen name="hero_action_size">14sp</dimen>
+    <dimen name="hero_action_icon">20dp</dimen>
+    <dimen name="billboard_pad">34dp</dimen>
+    <dimen name="billboard_title_size">44sp</dimen>
+    <dimen name="billboard_meta_size">15sp</dimen>
+    <dimen name="billboard_btn_height">54dp</dimen>
+
+    <!-- 横向行 -->
+    <dimen name="row_title_size">20sp</dimen>
+    <dimen name="row_title_top">30dp</dimen>
+    <dimen name="row_title_bottom">10dp</dimen>
+    <dimen name="row_gap">26dp</dimen>
+
+    <!-- 卡片 / 图片 -->
+    <dimen name="poster_width">176dp</dimen>
+    <dimen name="poster_height">264dp</dimen>
+    <dimen name="continue_width">360dp</dimen>
+    <dimen name="continue_height">202dp</dimen>
+    <dimen name="live_width">320dp</dimen>
+    <dimen name="live_height">180dp</dimen>
+    <dimen name="grid_min_width">168dp</dimen>
+    <dimen name="hero_ratio_min_height">320dp</dimen>
+
+    <dimen name="large_title_size">40sp</dimen>
+    <dimen name="section_title_size">26sp</dimen>
+    <dimen name="card_title_size">15sp</dimen>
+    <dimen name="body_size">17sp</dimen>
+    <dimen name="caption_size">13sp</dimen>
+</resources>

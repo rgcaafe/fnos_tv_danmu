@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 品牌 / 系统色（深色） -->
+    <color name="colorPrimary">#FF0A84FF</color>
+    <color name="colorPrimaryDark">#FF000000</color>
+    <color name="colorPrimaryLight">#FF64D2FF</color>
+    <color name="colorAccent">#FF0A84FF</color>
+
+    <!-- 语义色 -->
+    <color name="surface">#FF000000</color>
+    <color name="surface_grouped">#FF000000</color>
+    <color name="surface_card">#FF1C1C1E</color>
+    <color name="surface_elevated">#FF2C2C2E</color>
+    <color name="fill">#FF2C2C2E</color>
+    <color name="fill_strong">#FF3A3A3C</color>
+    <color name="label">#FFFFFFFF</color>
+    <color name="label_2">#99EBEBF5</color>
+    <color name="label_3">#4DEBEBF5</color>
+    <color name="separator">#33FFFFFF</color>
+    <color name="accent">#FF0A84FF</color>
+    <color name="accent_soft">#260A84FF</color>
+    <color name="danger">#FFFF453A</color>
+    <color name="success">#FF30D158</color>
+    <color name="warning">#FFFFD60A</color>
+    <color name="nav_bg">#F21C1C1E</color>
+    <color name="text_on_accent">#FFFFFFFF</color>
+    <color name="image_placeholder">#FF1C1C1E</color>
+
+    <!-- 兼容旧命名 -->
+    <color name="bg_dark">@color/surface_grouped</color>
+    <color name="bg_deep">@color/surface</color>
+    <color name="bg_card">@color/surface_card</color>
+    <color name="bg_elevated">@color/surface_elevated</color>
+    <color name="bg_input">@color/fill</color>
+    <color name="bg_button_normal">@color/fill</color>
+    <color name="bg_button_focused">@color/accent</color>
+    <color name="bg_button_pressed">@color/accent</color>
+    <color name="bg_card_focused">@color/surface_elevated</color>
+    <color name="bg_nav">@color/nav_bg</color>
+    <color name="text_primary">@color/label</color>
+    <color name="text_secondary">@color/label_2</color>
+    <color name="text_hint">@color/label_3</color>
+    <color name="text_accent">@color/accent</color>
+    <color name="border_light">@color/separator</color>
+    <color name="border_focused">@color/accent</color>
+    <color name="divider">@color/separator</color>
+</resources>

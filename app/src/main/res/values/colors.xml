@@ -1,35 +1,52 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- 主色调：深灰色系 -->
-    <color name="colorPrimary">#FF37474F</color>
-    <color name="colorPrimaryDark">#FF263238</color>
-    <color name="colorPrimaryLight">#FF546E7A</color>
-    <color name="colorAccent">#FF78909C</color>
+    <!-- 品牌 / 系统色（浅色） -->
+    <color name="colorPrimary">#FF007AFF</color>
+    <color name="colorPrimaryDark">#FFFFFFFF</color>
+    <color name="colorPrimaryLight">#FF5AC8FA</color>
+    <color name="colorAccent">#FF007AFF</color>
 
-    <!-- 背景色 -->
-    <color name="bg_dark">#FF1A1A1A</color>
-    <color name="bg_card">#FF2D2D2D</color>
-    <color name="bg_input">#FF3C3C3C</color>
-    <color name="bg_button_normal">#FF455A64</color>
-    <color name="bg_button_focused">#FF607D8B</color>
-    <color name="bg_button_pressed">#FF37474F</color>
-    <color name="bg_card_focused">#FF3A3A3A</color>
-
-    <!-- 文字色 -->
-    <color name="text_primary">#FFEEEEEE</color>
-    <color name="text_secondary">#FFB0B0B0</color>
-    <color name="text_hint">#FF808080</color>
-    <color name="text_white">#FFFFFFFF</color>
-
-    <!-- 边框/分割线 -->
-    <color name="border_light">#FF555555</color>
-    <color name="border_focused">#FF90A4AE</color>
-    <color name="divider">#FF424242</color>
-
-    <!-- 状态色 -->
-    <color name="success">#FF81C784</color>
-    <color name="error">#FFE57373</color>
-
-    <!-- 透明 -->
+    <!-- 语义色 -->
+    <color name="surface">#FFFFFFFF</color>
+    <color name="surface_grouped">#FFF2F2F7</color>
+    <color name="surface_card">#FFFFFFFF</color>
+    <color name="surface_elevated">#FFFFFFFF</color>
+    <color name="fill">#FFEFEFF4</color>
+    <color name="fill_strong">#FFE5E5EA</color>
+    <color name="label">#FF000000</color>
+    <color name="label_2">#993C3C43</color>
+    <color name="label_3">#4D3C3C43</color>
+    <color name="separator">#333C3C43</color>
+    <color name="accent">#FF007AFF</color>
+    <color name="accent_soft">#14007AFF</color>
+    <color name="danger">#FFFF3B30</color>
+    <color name="success">#FF34C759</color>
+    <color name="warning">#FFFF9F0A</color>
+    <color name="nav_bg">#F2F9F9F9</color>
+    <color name="text_on_accent">#FFFFFFFF</color>
+    <color name="image_placeholder">#FFE5E5EA</color>
     <color name="transparent">#00000000</color>
+
+    <!-- 兼容旧命名（播放器等模块仍在使用） -->
+    <color name="bg_dark">@color/surface_grouped</color>
+    <color name="bg_deep">@color/surface</color>
+    <color name="bg_card">@color/surface_card</color>
+    <color name="bg_elevated">@color/surface_elevated</color>
+    <color name="bg_input">@color/fill</color>
+    <color name="bg_button_normal">@color/fill</color>
+    <color name="bg_button_focused">@color/accent</color>
+    <color name="bg_button_pressed">@color/accent</color>
+    <color name="bg_card_focused">@color/fill</color>
+    <color name="bg_nav">@color/nav_bg</color>
+    <color name="text_primary">@color/label</color>
+    <color name="text_secondary">@color/label_2</color>
+    <color name="text_hint">@color/label_3</color>
+    <color name="text_white">#FFFFFFFF</color>
+    <color name="text_accent">@color/accent</color>
+    <color name="border_light">@color/separator</color>
+    <color name="border_focused">@color/accent</color>
+    <color name="divider">@color/separator</color>
+    <color name="error">@color/danger</color>
+    <color name="scrim_soft">#66000000</color>
+    <color name="scrim_strong">#CC000000</color>
 </resources>

@@ -2,17 +2,17 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:background="#FF1A1A1A"
+    android:background="@drawable/bg_player_dialog"
     android:orientation="vertical"
-    android:padding="16dp">
+    android:padding="20dp">
 
     <TextView
         android:id="@+id/tv_skip_title"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="片头片尾跳过"
-        android:textColor="#FFF"
-        android:textSize="18sp"
+        android:textColor="#FFFFFFFF"
+        android:textSize="20sp"
         android:textStyle="bold"
         android:paddingBottom="12dp" />
 
@@ -32,34 +32,37 @@
         <Button
             android:id="@+id/dm_reset"
             android:layout_width="0dp"
-            android:layout_height="40dp"
+            android:layout_height="42dp"
             android:layout_weight="1"
-            android:layout_marginRight="6dp"
-            android:background="@drawable/bg_chip"
+            android:layout_marginRight="8dp"
+            android:background="@drawable/bg_player_dialog_chip"
+            android:backgroundTint="@null"
             android:text="重置"
-            android:textColor="#999"
+            android:textColor="#CCCCCC"
             android:focusable="true" />
 
         <Button
             android:id="@+id/dm_cancel"
             android:layout_width="0dp"
-            android:layout_height="40dp"
+            android:layout_height="42dp"
             android:layout_weight="1"
-            android:layout_marginRight="6dp"
-            android:background="@drawable/bg_chip"
+            android:layout_marginRight="8dp"
+            android:background="@drawable/bg_player_dialog_chip"
+            android:backgroundTint="@null"
             android:text="取消"
-            android:textColor="#999"
+            android:textColor="#CCCCCC"
             android:focusable="true" />
 
         <Button
             android:id="@+id/dm_ok"
             android:layout_width="0dp"
-            android:layout_height="40dp"
+            android:layout_height="42dp"
             android:layout_weight="1"
-            android:layout_marginLeft="6dp"
-            android:background="@drawable/bg_chip"
+            android:background="@drawable/bg_player_primary"
+            android:backgroundTint="@null"
             android:text="确定"
-            android:textColor="#FFF"
+            android:textColor="#FFFFFFFF"
+            android:textStyle="bold"
             android:focusable="true" />
 
     </LinearLayout>

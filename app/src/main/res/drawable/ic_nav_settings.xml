@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 设置：线性图标（三条推子） -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M3.6,7L7.4,7M11.6,7L20.4,7M3.6,12L12.4,12M16.6,12L20.4,12M3.6,17L5.4,17M10.6,17L20.4,17"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:strokeWidth="1.9" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M9.5,5a2,2 0 1,1 0,4a2,2 0 1,1 0,-4M14.5,10a2,2 0 1,1 0,4a2,2 0 1,1 0,-4M8,15a2,2 0 1,1 0,4a2,2 0 1,1 0,-4" />
+</vector>

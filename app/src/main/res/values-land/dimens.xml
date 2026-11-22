@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 横屏：屏幕高度很紧张，所有纵向尺寸都要更小 -->
+    <dimen name="min_height_fill">0dp</dimen>
+    <dimen name="screen_pad">24dp</dimen>
+    <dimen name="top_bar_height">52dp</dimen>
+    <dimen name="nav_bar_height">58dp</dimen>
+    <dimen name="nav_rail_width">104dp</dimen>
+    <dimen name="nav_item_rail_height">84dp</dimen>
+    <dimen name="section_gap">28dp</dimen>
+
+    <!-- 左侧图标导航 -->
+    <dimen name="rail_width">58dp</dimen>
+    <dimen name="rail_icon">24dp</dimen>
+    <dimen name="rail_item_height">46dp</dimen>
+    <dimen name="rail_gap">10dp</dimen>
+
+    <!-- 大图推荐位 -->
+    <dimen name="hero_pad">22dp</dimen>
+    <dimen name="hero_title_size">27sp</dimen>
+    <dimen name="hero_eyebrow_size">10sp</dimen>
+    <dimen name="hero_meta_size">10sp</dimen>
+    <dimen name="hero_overview_size">12sp</dimen>
+    <dimen name="hero_play_height">38dp</dimen>
+    <dimen name="hero_action_size">12sp</dimen>
+    <dimen name="hero_action_icon">15dp</dimen>
+    <dimen name="billboard_pad">22dp</dimen>
+    <dimen name="billboard_title_size">27sp</dimen>
+    <dimen name="billboard_meta_size">11sp</dimen>
+    <dimen name="billboard_btn_height">38dp</dimen>
+
+    <!-- 横向行 -->
+    <dimen name="row_title_size">16sp</dimen>
+    <dimen name="row_title_top">26dp</dimen>
+    <dimen name="row_title_bottom">7dp</dimen>
+    <dimen name="row_gap">18dp</dimen>
+
+    <!-- 卡片 / 图片 -->
+    <dimen name="poster_width">142dp</dimen>
+    <dimen name="poster_height">213dp</dimen>
+    <dimen name="continue_width">294dp</dimen>
+    <dimen name="continue_height">165dp</dimen>
+    <dimen name="live_width">264dp</dimen>
+    <dimen name="live_height">149dp</dimen>
+    <dimen name="grid_min_width">120dp</dimen>
+    <dimen name="hero_ratio_min_height">260dp</dimen>
+
+    <dimen name="large_title_size">34sp</dimen>
+    <dimen name="section_title_size">20sp</dimen>
+    <dimen name="card_title_size">13sp</dimen>
+    <dimen name="body_size">15sp</dimen>
+    <dimen name="caption_size">12sp</dimen>
+</resources>
